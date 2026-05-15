@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Market Spike Detection — Real-Time Trading Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rxjs@7.8.1/dist/bundles/rxjs.umd.min.js"></script>
+    <style>
+        :root {
+            --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --radius-sm: 6px;
+            --radius: 10px;
+            --radius-lg: 14px;
+            --transition: 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0a0d12;
+            --bg-secondary: #0f1319;
+            --card-bg: #151a23;
+            --card-bg-hover: #1b2230;
+            --border: #242b38;
+            --border-light: #2d3545;
+            --text: #d8dde6;
+            --text-secondary: #8893a7;
+            --text-muted: #5c6678;
+            --green: #00d46a;
+            --green-bg: rgba(0, 212, 106, 0.10);
+            --red: #ff3b55;
+            --red-bg: rgba(255, 59, 85, 0.10);
+            --accent: #4d8af0;
+            --accent-bg: rgba(77, 138, 240, 0.12);
+            --gold: #f5b01e;
+            --gold-bg: rgba(245, 176, 30, 0.10);
+            --orange: #ff7a3f;
+            --neon-green: #39ff9c;
+            --neon-red: #ff4770;
+            --teal: #00d4c8;
+            --glass-bg: rgba(21, 26, 35, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+            --header-bg: #0d1118;
+            --table-stripe: rgba(255, 255, 255, 0.015);
+            --scrollbar-thumb: #242b38;
+            --scrollbar-track: #0f1319;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 3px;
+        }
+
+        /* ============ HEADER ============ */
+        .header {
+            background: var(--header-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--neon-green), var(--teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 6px var(--neon-green);
+            }
+
+            50% {
+                opacity: 0.4;
+                box-shadow: 0 0 12px var(--neon-green);
+            }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 6px 12px;
+            color: var(--text);
+            font-size: 13px;
+            width: 200px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .search-box:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--card-bg-hover);
+            border-color: var(--border-light);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn-accent:hover {
+            opacity: 0.85;
+        }
+
+        /* ============ TICKER TAPE ============ */
+        .ticker-tape {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            overflow: hidden;
+            height: 36px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .ticker-track {
+            display: flex;
+            animation: ticker-scroll 60s linear infinite;
+            white-space: nowrap;
+            gap: 0;
+        }
+
+        @keyframes ticker-scroll {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 20px;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+        }
+
+        .ticker-item.up {
+            color: var(--green);
+        }
+
+        .ticker-item.down {
+            color: var(--red);
+        }
+
+        .ticker-sym {
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        /* ============ MAIN LAYOUT ============ */
+        .main-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 320px 340px;
+            grid-template-rows: auto 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            overflow: auto;
+            min-height: 0;
+        }
+
+        /* Market Overview spans top row first 2 cols */
+        .panel-overview {
+            grid-column: 1 / 3;
+            grid-row: 1;
+        }
+
+        .panel-alerts {
+            grid-column: 3;
+            grid-row: 1 / 4;
+            overflow-y: auto;
+        }
+
+        .panel-spike {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .panel-sectors {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .panel-heatmap {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .panel-momentum {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto auto auto auto auto;
+            }
+
+            .panel-overview {
+                grid-column: 1 / 3;
+                grid-row: 1;
+            }
+
+            .panel-alerts {
+                grid-column: 1 / 3;
+                grid-row: 2;
+                max-height: 300px;
+            }
+
+            .panel-spike {
+                grid-column: 1;
+                grid-row: 3;
+            }
+
+            .panel-sectors {
+                grid-column: 2;
+                grid-row: 3;
+            }
+
+            .panel-heatmap {
+                grid-column: 1;
+                grid-row: 4;
+            }
+
+            .panel-momentum {
+                grid-column: 2;
+                grid-row: 4;
+            }
+        }
+
+        /* ============ PANELS ============ */
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* ============ METRICS ROW ============ */
+        .metrics-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .metric-card {
+            flex: 1;
+            min-width: 100px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .metric-change {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .metric-change.up {
+            color: var(--green);
+        }
+
+        .metric-change.down {
+            color: var(--red);
+        }
+
+        /* ============ SENTIMENT METER ============ */
+        .sentiment-meter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sentiment-bar {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, var(--red), var(--gold), var(--green));
+            position: relative;
+        }
+
+        .sentiment-indicator {
+            position: absolute;
+            top: -4px;
+            width: 12px;
+            height: 16px;
+            background: #fff;
+            border-radius: 3px;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+
+        /* ============ SPIKE FEED ============ */
+        .spike-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 4px;
+            font-size: 12px;
+            animation: fadeSlideIn 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .spike-item.bullish {
+            background: var(--green-bg);
+            border-color: rgba(0, 212, 106, 0.25);
+        }
+
+        .spike-item.bearish {
+            background: var(--red-bg);
+            border-color: rgba(255, 59, 85, 0.25);
+        }
+
+        .spike-item.neutral {
+            background: var(--accent-bg);
+            border-color: rgba(77, 138, 240, 0.25);
+        }
+
+        .spike-sym {
+            font-weight: 700;
+            min-width: 70px;
+        }
+
+        .spike-price {
+            font-weight: 600;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .spike-change {
+            font-weight: 700;
+            min-width: 55px;
+            text-align: right;
+        }
+
+        .spike-tag {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .spike-tag.spike {
+            background: var(--orange);
+            color: #000;
+        }
+
+        .spike-tag.volume {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .spike-tag.breakout {
+            background: var(--teal);
+            color: #000;
+        }
+
+        .spike-tag.reversal {
+            background: var(--gold);
+            color: #000;
+        }
+
+        /* ============ HEATMAP ============ */
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 3px;
+        }
+
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s;
+            text-align: center;
+            line-height: 1.1;
+            padding: 2px;
+            word-break: break-all;
+        }
+
+        .heatmap-cell:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+
+        /* ============ ALERT PANEL ============ */
+        .alert-item {
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            border-left: 3px solid;
+            font-size: 12px;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        .alert-item.buy {
+            background: var(--green-bg);
+            border-left-color: var(--green);
+        }
+
+        .alert-item.sell {
+            background: var(--red-bg);
+            border-left-color: var(--red);
+        }
+
+        .alert-item.info {
+            background: var(--accent-bg);
+            border-left-color: var(--accent);
+        }
+
+        .alert-item.warn {
+            background: var(--gold-bg);
+            border-left-color: var(--gold);
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
+        .alert-sym {
+            font-weight: 700;
+        }
+
+        .alert-score {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .alert-msg {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        /* ============ SECTOR CARD ============ */
+        .sector-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .sector-name {
+            font-weight: 600;
+        }
+
+        .sector-score {
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .sector-bar-bg {
+            width: 60px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .sector-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* ============ MOMENTUM TABLE ============ */
+        .momo-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .momo-table th {
+            text-align: left;
+            padding: 4px 6px;
+            color: var(--text-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+        }
+
+        .momo-table td {
+            padding: 5px 6px;
+            border-bottom: 1px solid var(--table-stripe);
+        }
+
+        .momo-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* ============ GAUGE ============ */
+        .gauge-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .gauge {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .gauge canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ============ TOAST ============ */
+        .toast-container {
+            position: fixed;
+            top: 60px;
+            right: 16px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            animation: slideInRight 0.3s ease;
+            max-width: 300px;
+            box-shadow: var(--shadow);
+        }
+
+        .toast.bullish {
+            border-left: 3px solid var(--green);
+        }
+
+        .toast.bearish {
+            border-left: 3px solid var(--red);
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* ============ SPARKLINE CANVAS ============ */
+        .sparkline-canvas {
+            width: 100%;
+            height: 40px;
+        }
+
+        /* Flash Effect */
+        @keyframes flash-green {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0px transparent;
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(0, 212, 106, 0.6), inset 0 0 10px rgba(0, 212, 106, 0.1);
+            }
+        }
+
+        @keyframes flash-red {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0px transparent;
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(255, 59, 85, 0.6), inset 0 0 10px rgba(255, 59, 85, 0.1);
+            }
+        }
+
+        .flash-green {
+            animation: flash-green 0.5s ease 2;
+        }
+
+        .flash-red {
+            animation: flash-red 0.5s ease 2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ==================== HEADER ==================== -->
+    <div class="header">
+        <div class="header-left">
+            <span class="logo">⚡ AI SPIKE TERMINAL</span>
+            <span class="header-status">
+                <span class="live-dot" id="liveDot"></span>
+                <span id="statusText">Connecting...</span>
+                <span>|</span>
+                <span id="updateCount">Updates: 0</span>
+                <span>|</span>
+                <span id="lastUpdate">--:--:--</span>
+            </span>
+        </div>
+        <div class="header-right">
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search stock (e.g. RELIANCE, INFY)..."
+                oninput="filterDashboard()">
+            <button class="btn" onclick="toggleAutoRefresh()" id="btnAutoRefresh">⏸ Pause</button>
+            <button class="btn" onclick="enableNotifications()">🔔 Notify</button>
+            <button class="btn" onclick="exportCSV()">📥 CSV</button>
+            <button class="btn btn-accent" onclick="forceRefresh()">🔄 Refresh Now</button>
+        </div>
+    </div>
+
+    <!-- ==================== TICKER TAPE ==================== -->
+    <div class="ticker-tape" id="tickerTape">
+        <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+
+    <!-- ==================== TOAST CONTAINER ==================== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ==================== MAIN DASHBOARD ==================== -->
+    <div class="main-container">
+
+        <!-- A. MARKET OVERVIEW -->
+        <div class="panel panel-overview" id="panelOverview">
+            <div class="panel-header">
+                <span class="panel-title">📊 Market Overview — NIFTY 50</span>
+                <span style="font-size:11px;color:var(--text-muted);" id="marketTime"></span>
+            </div>
+            <div class="panel-body">
+                <div class="metrics-row" id="metricsRow"></div>
+            </div>
+        </div>
+
+        <!-- B. LIVE SPIKE FEED -->
+        <div class="panel panel-spike" id="panelSpike">
+            <div class="panel-header">
+                <span class="panel-title">⚡ Live Spike Feed</span>
+                <span style="font-size:10px;color:var(--text-muted);" id="spikeCount">0 active</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;flex-shrink:0;" id="spikeFilters">
+                <button class="btn"
+                    style="font-size:10px;padding:3px 10px;border-color:var(--green);color:var(--green);"
+                    onclick="setSpikeFilter('all')" id="spikeFiltAll">📋 ALL</button>
+                <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('SPIKE')"
+                    id="spikeFiltSpike">⚡ SPIKE</button>
+                <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('VOLUME')"
+                    id="spikeFiltVolume">📊 VOLUME</button>
+                <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('BREAKOUT')"
+                    id="spikeFiltBreakout">🚀 BREAKOUT</button>
+                <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('REVERSAL')"
+                    id="spikeFiltReversal">🔄 REVERSAL</button>
+                <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('BULLISH')"
+                    id="spikeFiltBullish">🟢 BULLISH</button>
+                <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('BEARISH')"
+                    id="spikeFiltBearish">🔴 BEARISH</button>
+            </div>
+            <div class="panel-body" id="spikeFeed"></div>
+        </div>
+
+        <!-- C. SECTOR MONITORING -->
+        <div class="panel panel-sectors" id="panelSectors">
+            <div class="panel-header">
+                <span class="panel-title">🏭 Sector Strength</span>
+                <span style="font-size:10px;color:var(--text-muted);" id="strongestSector">--</span>
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;flex-shrink:0;" id="sectorFilters">
+                <button class="btn" style="font-size:9px;padding:2px 8px;border-color:var(--green);color:var(--green);"
+                    onclick="setSectorFilter('all')" id="sectorFiltAll">📋 ALL</button>
+                <button class="btn" style="font-size:9px;padding:2px 8px;" onclick="setSectorFilter('BULLISH')"
+                    id="sectorFiltBullish">🟢 BULLISH</button>
+                <button class="btn" style="font-size:9px;padding:2px 8px;" onclick="setSectorFilter('BEARISH')"
+                    id="sectorFiltBearish">🔴 BEARISH</button>
+                <button class="btn" style="font-size:9px;padding:2px 8px;" onclick="setSectorFilter('STRONG')"
+                    id="sectorFiltStrong">💪 STRONG</button>
+                <button class="btn" style="font-size:9px;padding:2px 8px;" onclick="setSectorFilter('WEAK')"
+                    id="sectorFiltWeak">📉 WEAK</button>
+            </div>
+            <div class="panel-body" id="sectorList"></div>
+        </div>
+
+        <!-- D. SECTOR HEATMAP / GAP CHART (Togglable) -->
+        <div class="panel panel-heatmap" id="panelHeatmap">
+            <div class="panel-header">
+                <span class="panel-title" id="heatmapTitle">🗺 Sector Heatmap</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:10px;color:var(--text-muted);" id="heatmapSubtitle">Color = performance |
+                        Size = volume</span>
+                    <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="toggleHeatmapMode()"
+                        id="btnHeatmapToggle">📊 Gap Chart</button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="heatmap-grid" id="heatmapGrid"></div>
+                <canvas id="gapChartCanvas" style="display:none;width:100%;height:100%;"></canvas>
+            </div>
+        </div>
+
+        <!-- E. TOP MOMENTUM STOCKS -->
+        <div class="panel panel-momentum" id="panelMomentum">
+            <div class="panel-header">
+                <span class="panel-title">🚀 Top Momentum Stocks</span>
+                <span style="font-size:10px;color:var(--text-muted);">Sorted by AI Momentum Score</span>
+            </div>
+            <div class="panel-body" style="overflow-y:auto;">
+                <table class="momo-table" id="momoTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                            <th>Chg%</th>
+                            <th>Vol</th>
+                            <th>MomScore</th>
+                            <th>Signal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="momoBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- F. SMART ALERTS PANEL -->
+        <div class="panel panel-alerts" id="panelAlerts">
+            <div class="panel-header">
+                <span class="panel-title">🤖 AI Smart Alerts</span>
+                <span style="font-size:10px;color:var(--text-muted);" id="alertCount">0 signals</span>
+            </div>
+            <div class="panel-body" id="alertsFeed" style="overflow-y:auto;">
+                <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px;">
+                    Waiting for data...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCRIPTS (RxJS Reactive Architecture) ==================== -->
+    <script>
+        (function () {
+            // Destructure RxJS
+            const { interval, from, of, merge, Subject, BehaviorSubject, combineLatest, timer, EMPTY } = rxjs;
+            const { switchMap, map, scan, tap, filter, distinctUntilChanged, take, catchError, startWith, pairwise, shareReplay, debounceTime } = rxjs.operators;
+
+            // ============================================================
+            // CONFIGURATION
+            // ============================================================
+            const API_URL = 'http://localhost:3000/api/nifty50';
+            const REFRESH_INTERVAL = 3 * 1000; // 3 seconds
+            const SPIKE_THRESHOLD_PCHANGE = 2.0;
+            const VOLUME_MULTIPLIER = 2.0;
+            const NEAR_DAYHIGH_THRESHOLD = 0.5;
+            const NEAR_YEARHIGH_THRESHOLD = 2.0;
+            let gapChartInstance = null;
+
+            // ============================================================
+            // BEHAVIOR SUBJECTS (Reactive State)
+            // ============================================================
+            const autoRefresh$ = new BehaviorSubject(true);
+            const notificationsEnabled$ = new BehaviorSubject(false);
+            const spikeFilter$ = new BehaviorSubject('all');
+            const heatmapMode$ = new BehaviorSubject('heatmap');
+            const sectorFilter$ = new BehaviorSubject('all');
+            const updateCount$ = new Subject();
+
+            // Manual refresh trigger
+            const manualRefresh$ = new Subject();
+
+            // Search filter stream
+            const searchQuery$ = new BehaviorSubject('');
+
+            // ============================================================
+            // AUDIO ENGINE
+            // ============================================================
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            let audioCtx = null;
+            function getAC() { if (!audioCtx) audioCtx = new AudioCtx(); return audioCtx; }
+            function beep(f, d, t, v) {
+                try {
+                    const c = getAC(), o = c.createOscillator(), g = c.createGain();
+                    o.type = t; o.frequency.setValueAtTime(f, c.currentTime);
+                    g.gain.setValueAtTime(v, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + d);
+                    o.connect(g); g.connect(c.destination); o.start(c.currentTime); o.stop(c.currentTime + d);
+                } catch (e) { }
+            }
+            function playBuy() {
+                beep(880, 0.15, 'sine', 0.12);
+                setTimeout(() => beep(1100, 0.2, 'sine', 0.12), 150);
+            }
+            function playSell() { beep(300, 0.3, 'sawtooth', 0.08); }
+            function playSpike() {
+                beep(600, 0.1, 'square', 0.06);
+                setTimeout(() => beep(900, 0.1, 'square', 0.06), 100);
+                setTimeout(() => beep(1200, 0.15, 'square', 0.06), 200);
+            }
+
+            // ============================================================
+            // NOTIFICATIONS
+            // ============================================================
+            function showToast(msg, type) {
+                const c = document.getElementById('toastContainer'), t = document.createElement('div');
+                t.className = 'toast ' + (type === 'bullish' ? 'bullish' : type === 'bearish' ? 'bearish' : '');
+                t.textContent = msg; c.appendChild(t);
+                setTimeout(() => {
+                    t.style.opacity = '0';
+                    t.style.transition = 'opacity 0.3s';
+                    setTimeout(() => t.remove(), 300);
+                }, 3500);
+            }
+            function sendNotif(title, body) {
+                if (notificationsEnabled$.value && Notification.permission === 'granted')
+                    new Notification('📈 ' + title, { body });
+            }
+
+            // ============================================================
+            // UTILITY
+            // ============================================================
+            function fmtVol(v) {
+                if (!v || v === 0) return '0'; if (v >= 1e7) return (v / 1e7).toFixed(2) + 'Cr';
+                if (v >= 1e5) return (v / 1e5).toFixed(2) + 'L'; if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K'; return String(v);
+            }
+
+            // ============================================================
+            // API FETCH AS OBSERVABLE
+            // ============================================================
+            function fetchMarketData() {
+                return from(fetch(API_URL).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }))
+                    .pipe(
+                        map(json => {
+                            let stocks = json && json.data ? json.data : Array.isArray(json) ? json : [];
+                            return stocks.map(s => ({
+                                symbol: s.symbol || '', companyName: s.companyName || s.meta?.companyName || '',
+                                industry: s.industry || s.meta?.industry || 'Other',
+                                open: parseFloat(s.open) || 0, dayHigh: parseFloat(s.dayHigh) || 0,
+                                dayLow: parseFloat(s.dayLow) || 0, lastPrice: parseFloat(s.lastPrice) || 0,
+                                previousClose: parseFloat(s.previousClose) || 0, change: parseFloat(s.change) || 0,
+                                pChange: parseFloat(s.pChange) || 0, totalTradedVolume: parseFloat(s.totalTradedVolume) || 0,
+                                totalTradedValue: parseFloat(s.totalTradedValue) || 0,
+                                yearHigh: parseFloat(s.yearHigh) || 0, yearLow: parseFloat(s.yearLow) || 0,
+                                nearWKH: parseFloat(s.nearWKH) || 0, nearWKL: parseFloat(s.nearWKL) || 0,
+                            })).filter(s => s.symbol && s.lastPrice > 0);
+                        }),
+                        catchError(err => { console.error(err); return of(null); })
+                    );
+            }
+
+            // ============================================================
+            // DATA POLLING STREAM — combines interval + manual refresh
+            // ============================================================
+            const dataTick$ = merge(
+                interval(REFRESH_INTERVAL).pipe(filter(() => autoRefresh$.value)),
+                manualRefresh$
+            ).pipe(
+                startWith(0),
+                switchMap(() => fetchMarketData()),
+                filter(data => data !== null && data.length > 0),
+                shareReplay(1)
+            );
+
+            // Paired: [prev, current] for spike detection
+            const pairedData$ = dataTick$.pipe(
+                scan((acc, curr) => [acc[1], curr], [null, null]),
+                filter(([prev, curr]) => curr !== null),
+                shareReplay(1)
+            );
+
+            // ============================================================
+            // HISTORY ACCUMULATOR (Volume & Price)
+            // ============================================================
+            const history$ = dataTick$.pipe(
+                scan((hist, stocks) => {
+                    const volHist = { ...hist.volHist };
+                    const priceHist = { ...hist.priceHist };
+                    stocks.forEach(s => {
+                        if (!volHist[s.symbol]) volHist[s.symbol] = [];
+                        volHist[s.symbol].push(s.totalTradedVolume);
+                        if (volHist[s.symbol].length > 20) volHist[s.symbol].shift();
+                        if (!priceHist[s.symbol]) priceHist[s.symbol] = [];
+                        priceHist[s.symbol].push(s.lastPrice);
+                        if (priceHist[s.symbol].length > 30) priceHist[s.symbol].shift();
+                    });
+                    return { volHist, priceHist };
+                }, { volHist: {}, priceHist: {} }),
+                shareReplay(1)
+            );
+
+            function avgVol(volHist, sym) {
+                const vols = volHist[sym]; if (!vols || vols.length === 0) return 0;
+                return vols.reduce((a, b) => a + b, 0) / vols.length;
+            }
+
+            // ============================================================
+            // DETECT SPIKES (Pure function, run via map)
+            // ============================================================
+            function detectSpikes(current, previous) {
+                const prevMap = {}; if (previous) previous.forEach(s => { prevMap[s.symbol] = s; });
+                const spikes = [];
+                current.forEach(stock => {
+                    const prev = prevMap[stock.symbol]; const reasons = [];
+                    if (Math.abs(stock.pChange) >= SPIKE_THRESHOLD_PCHANGE) reasons.push({ type: stock.pChange > 0 ? 'SPIKE_UP' : 'SPIKE_DOWN', severity: Math.min(Math.abs(stock.pChange) / 5, 1), msg: (stock.pChange > 0 ? 'Sudden spike' : 'Sudden dump') + ': ' + stock.pChange.toFixed(2) + '%' });
+                    if (prev && prev.totalTradedVolume > 0) { const vr = stock.totalTradedVolume / prev.totalTradedVolume; if (vr >= VOLUME_MULTIPLIER) reasons.push({ type: 'VOLUME_BREAKOUT', severity: Math.min(vr / 5, 1), msg: 'Volume ' + vr.toFixed(1) + 'x normal' }); }
+                    if (stock.dayHigh > 0 && stock.lastPrice > 0) { const nd = ((stock.dayHigh - stock.lastPrice) / stock.dayHigh) * 100; if (nd <= NEAR_DAYHIGH_THRESHOLD) reasons.push({ type: 'NEAR_DAYHIGH', severity: 0.7, msg: 'Near day high (' + nd.toFixed(2) + '% away)' }); }
+                    if (stock.yearHigh > 0 && stock.lastPrice > 0) { const ny = ((stock.yearHigh - stock.lastPrice) / stock.yearHigh) * 100; if (ny <= NEAR_YEARHIGH_THRESHOLD) reasons.push({ type: 'NEAR_YEARHIGH', severity: 0.9, msg: 'Near 52-week high! (' + ny.toFixed(2) + '% away)' }); }
+                    if (prev) { if (prev.pChange < -1 && stock.pChange > 1) reasons.push({ type: 'INTRADAY_REVERSAL_UP', severity: 0.8, msg: 'Intraday bullish reversal!' }); if (prev.pChange > 1 && stock.pChange < -1) reasons.push({ type: 'INTRADAY_REVERSAL_DOWN', severity: 0.8, msg: 'Intraday bearish reversal!' }); }
+                    if (stock.totalTradedValue > 500000000) reasons.push({ type: 'HIGH_VALUE', severity: 0.6, msg: 'High traded value: ₹' + (stock.totalTradedValue / 1e7).toFixed(1) + 'Cr' });
+                    if (stock.open > 0 && stock.previousClose > 0) { const gp = ((stock.open - stock.previousClose) / stock.previousClose) * 100; if (Math.abs(gp) >= 1.0) reasons.push({ type: gp > 0 ? 'GAP_UP' : 'GAP_DOWN', severity: Math.min(Math.abs(gp) / 5, 1), msg: (gp > 0 ? 'Gap Up' : 'Gap Down') + ': ' + Math.abs(gp).toFixed(2) + '%' }); }
+                    if (reasons.length > 0) spikes.push({ ...stock, reasons, momentumScore: calcMomScore(stock, reasons), timestamp: new Date().toISOString(), isBullish: stock.pChange > 0 });
+                });
+                spikes.sort((a, b) => Math.max(...b.reasons.map(r => r.severity)) - Math.max(...a.reasons.map(r => r.severity)));
+                return spikes;
+            }
+            function calcMomScore(stock, reasons) {
+                let s = 50 + stock.pChange * 3; const av = avgVol(history$.value ? history$.value.volHist : {}, stock.symbol); if (av > 0) {
+                    const vr = stock.totalTradedVolume / av;
+                    s += Math.min((vr - 1) * 5, 20);
+                } if (stock.dayHigh > 0) { const nd = ((stock.dayHigh - stock.lastPrice) / stock.dayHigh) * 100; if (nd <= 1) s += 10; else if (nd <= 2) s += 5; } if (stock.yearHigh > 0) { const ny = ((stock.yearHigh - stock.lastPrice) / stock.yearHigh) * 100; if (ny <= 5) s += 8; } reasons.forEach(r => { s += r.severity * 5; }); return Math.max(0, Math.min(100, s));
+            }
+
+            // ============================================================
+            // SECTORS
+            // ============================================================
+            function analyzeSectors(stocks) {
+                const secs = {}; stocks.forEach(s => {
+                    const ind = s.industry || 'Other'; if (!secs[ind]) secs[ind] = { stocks: [], tp: 0, tv: 0, tvl: 0, bc: 0, bc2: 0 };
+                    secs[ind].stocks.push(s);
+                    secs[ind].tp += s.pChange;
+                    secs[ind].tv += s.totalTradedVolume;
+                    secs[ind].tvl += s.totalTradedValue; if (s.pChange > 0) secs[ind].bc++; else if (s.pChange < 0) secs[ind].bc2++;
+                });
+                const r = []; for (const [n, d] of Object.entries(secs)) {
+                    const ap = d.stocks.length > 0 ? d.tp / d.stocks.length : 0; const br = d.stocks.length > 0 ? d.bc / d.stocks.length : 0;
+                    r.push({ name: n, avgPChange: ap, bullishRatio: br, momentumScore: Math.max(0, Math.min(100, (ap * 5) + (br * 30) + 50)), stockCount: d.stocks.length, totalVolume: d.tv, totalValue: d.tvl, stocks: d.stocks.map(s => s.symbol) });
+                } r.sort((a, b) => b.momentumScore - a.momentumScore); return r;
+            }
+
+            function calcAD(stocks) {
+                let a = 0, d = 0, u = 0;
+                stocks.forEach(s => { if (s.pChange > 0.05) a++; else if (s.pChange < -0.05) d++; else u++; }); return { adv: a, dec: d, unch: u, ratio: d > 0 ? (a / d).toFixed(2) : '∞' };
+            }
+
+            // ============================================================
+            // DERIVED STREAMS
+            // ============================================================
+            const spikes$ = combineLatest([pairedData$, history$]).pipe(
+                map(([[prev, curr], hist]) => ({ spikes: detectSpikes(curr, prev), stocks: curr, prev, hist }))
+            );
+
+            const sectors$ = dataTick$.pipe(map(stocks => analyzeSectors(stocks)));
+
+            // ============================================================
+            // RENDER FUNCTIONS (side-effects via tap)
+            // ============================================================
+            function renderOverview(stocks, sectors, spikeCount) {
+                const tp = stocks.length > 0 ? stocks.reduce((a, s) => a + s.pChange, 0) / stocks.length : 0;
+                const tv = stocks.reduce((a, s) => a + s.totalTradedVolume, 0);
+                const tvl = stocks.reduce((a, s) => a + s.totalTradedValue, 0);
+                const ad = calcAD(stocks);
+                const ss = sectors.length > 0 ? sectors[0] : null;
+                const ws = sectors.length > 0 ? sectors[sectors.length - 1] : null;
+                const sent = Math.max(0, Math.min(100, 50 + tp * 3 + (parseFloat(ad.ratio) || 1) * 10));
+                document.getElementById('metricsRow').innerHTML = [
+                    '<div class="metric-card"><div class="metric-label">NIFTY 50 Sentiment</div>',
+                    '<div class="metric-value" style="color:', tp >= 0 ? 'var(--green)' : 'var(--red)', '">', tp >= 0 ? '▲' : '▼', ' ', Math.abs(tp).toFixed(2), '%</div><div class="sentiment-meter" style="margin-top:6px;"><div class="sentiment-bar"><div class="sentiment-indicator" style="left:', sent, '%"></div></div><span style="font-size:10px;">', sent.toFixed(0), '</span></div></div>',
+                    '<div class="metric-card"><div class="metric-label">Advance / Decline</div><div class="metric-value">', ad.adv, '<span style="color:var(--green);font-size:14px;">▲</span> / ', ad.dec, '<span style="color:var(--red);font-size:14px;">▼</span></div><div class="metric-change">Ratio: ', ad.ratio, ' | Unch: ', ad.unch, '</div></div>',
+                    '<div class="metric-card"><div class="metric-label">Total Volume</div><div class="metric-value">', fmtVol(tv), '</div><div class="metric-change">Value: ₹', (tvl / 1e7).toFixed(1), 'Cr</div></div>',
+                    '<div class="metric-card"><div class="metric-label">Strongest Sector</div><div class="metric-value" style="color:var(--green);font-size:16px;">', ss ? ss.name : '--', '</div><div class="metric-change up">', ss ? ss.avgPChange.toFixed(2) + '%' : '--', '</div></div>',
+                    '<div class="metric-card"><div class="metric-label">Weakest Sector</div><div class="metric-value" style="color:var(--red);font-size:16px;">', ws ? ws.name : '--', '</div><div class="metric-change down">', ws ? ws.avgPChange.toFixed(2) + '%' : '--', '</div></div>',
+                    '<div class="metric-card"><div class="metric-label">Stocks Tracked</div><div class="metric-value">', stocks.length, '</div><div class="metric-change">Spikes: ', spikeCount, '</div></div>'
+                ].join('');
+                document.getElementById('marketTime').textContent = 'Last: ' + new Date().toLocaleTimeString('en-IN');
+            }
+
+            function renderSpikeFeed(spikes, filt) {
+                const feed = document.getElementById('spikeFeed');
+                let filtered = spikes;
+                if (filt !== 'all') filtered = spikes.filter(s => {
+                    switch (filt) { case 'SPIKE': return s.reasons.some(r => r.type.includes('SPIKE')); case 'VOLUME': return s.reasons.some(r => r.type.includes('VOLUME')); case 'BREAKOUT': return s.reasons.some(r => r.type.includes('HIGH') || r.type.includes('VALUE')); case 'REVERSAL': return s.reasons.some(r => r.type.includes('REVERSAL')); case 'GAP': return s.reasons.some(r => r.type.includes('GAP')); case 'BULLISH': return s.isBullish; case 'BEARISH': return !s.isBullish; default: return true; }
+                });
+                document.getElementById('spikeCount').textContent = filtered.length + ' of ' + spikes.length + ' | Filter: ' + filt.toUpperCase();
+                if (filtered.length === 0) { feed.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px;">No spikes match the filter — try a different filter</div>'; return; }
+                feed.innerHTML = filtered.slice(0, 15).map(s => {
+                    const m = s.reasons[0]; const dc = s.isBullish ? 'bullish' : 'bearish';
+                    const tags = s.reasons.map(r => { if (r.type.includes('SPIKE')) return '<span class="spike-tag spike">SPIKE</span>'; if (r.type.includes('VOLUME')) return '<span class="spike-tag volume">VOL</span>'; if (r.type.includes('HIGH') || r.type.includes('VALUE')) return '<span class="spike-tag breakout">BREAK</span>'; if (r.type.includes('REVERSAL')) return '<span class="spike-tag reversal">REV</span>'; if (r.type.includes('GAP')) return '<span class="spike-tag reversal">GAP</span>'; return ''; }).join(' ');
+                    return '<div class="spike-item ' + dc + '"><span class="spike-sym" style="color:' + (s.isBullish ? 'var(--green)' : 'var(--red)') + '">' + (s.isBullish ? '▲' : '▼') + ' ' + s.symbol + '</span><span class="spike-price">₹' + s.lastPrice.toFixed(2) + '</span><span class="spike-change" style="color:' + (s.isBullish ? 'var(--green)' : 'var(--red)') + '">' + (s.pChange >= 0 ? '+' : '') + s.pChange.toFixed(2) + '%</span><span style="font-size:10px;color:var(--text-muted);">V:' + fmtVol(s.totalTradedVolume) + '</span>' + tags + '<span style="font-size:9px;color:var(--text-muted);flex:1;text-align:right;">' + m.msg + '</span></div>';
+                }).join('');
+            }
+
+            function renderSectors(sectors, filt) {
+                let filtered = sectors;
+                if (filt !== 'all') filtered = sectors.filter(s => {
+                    switch (filt) { case 'BULLISH': return s.avgPChange > 0; case 'BEARISH': return s.avgPChange < 0; case 'STRONG': return s.momentumScore >= 60; case 'WEAK': return s.momentumScore < 40; default: return true; }
+                });
+                const l = document.getElementById('sectorList');
+                document.getElementById('strongestSector').textContent = (filtered.length > 0 ? '🏆 ' + filtered[0].name + ' (' + filtered[0].momentumScore.toFixed(0) + ')' : '--') + ' | ' + filt.toUpperCase();
+                if (filtered.length === 0) { l.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px;">No sectors match filter</div>'; return; }
+                const mx = Math.max(...filtered.map(s => s.momentumScore));
+                l.innerHTML = filtered.slice(0, 12).map((s, i) => {
+                    const bw = mx > 0 ? (s.momentumScore / mx) * 100 : 50;
+                    const bc = s.momentumScore >= 65 ? 'var(--green)' : s.momentumScore >= 45 ? 'var(--gold)' : 'var(--red)';
+                    return '<div class="sector-card"><span style="font-size:10px;color:var(--text-muted);min-width:18px;">#' + (i + 1) + '</span><span class="sector-name" style="flex:1;">' + s.name + '</span><span style="font-size:10px;color:var(--text-muted);">' + s.stockCount + ' stocks</span><span style="font-size:10px;min-width:50px;text-align:right;color:' + (s.avgPChange >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (s.avgPChange >= 0 ? '+' : '') + s.avgPChange.toFixed(2) + '%</span><div class="sector-bar-bg"><div class="sector-bar-fill" style="width:' + bw + '%;background:' + bc + ';"></div></div><span class="sector-score" style="color:' + bc + ';min-width:35px;text-align:right;">' + s.momentumScore.toFixed(0) + '</span></div>';
+                }).join('');
+            }
+
+            function renderHeatmap(stocks) {
+                const g = document.getElementById('heatmapGrid'); if (stocks.length === 0) { g.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px;grid-column:1/-1;">No data</div>'; return; }
+                const mv = Math.max(...stocks.map(s => s.totalTradedVolume), 1);
+                g.innerHTML = [...stocks].sort((a, b) => b.pChange - a.pChange).map(s => {
+                    let bg; const p = s.pChange; if (p >= 3) bg = '#00a844'; else if (p >= 2) bg = '#00c853'; else if (p >= 1) bg = '#26d07a'; else if (p >= 0.5) bg = '#4cd890'; else if (p >= 0) bg = '#6de0a5'; else if (p >= -0.5) bg = '#e06d6d'; else if (p >= -1) bg = '#d84c4c'; else if (p >= -2) bg = '#d02626'; else if (p >= -3) bg = '#c80000'; else bg = '#a80000';
+                    const sc = 0.7 + (s.totalTradedVolume / mv) * 0.8; const sz = (0.8 + sc * 0.4).toFixed(2);
+                    return '<div class="heatmap-cell" style="background:' + bg + ';transform:scale(' + sz + ');color:' + (Math.abs(p) >= 1.5 ? '#fff' : '#1a1a1a') + ';" title="' + s.symbol + ': ' + p.toFixed(2) + '% | Vol: ' + fmtVol(s.totalTradedVolume) + ' | ₹' + s.lastPrice.toFixed(2) + '">' + s.symbol + '</div>';
+                }).join('');
+            }
+
+            function renderGapChart(stocks) {
+                const c = document.getElementById('gapChartCanvas'); const ctx = c.getContext('2d'); if (gapChartInstance) {
+                    gapChartInstance.destroy();
+                    gapChartInstance = null;
+                }
+                const gd = stocks.map(s => ({ symbol: s.symbol, gapPct: (s.open > 0 && s.previousClose > 0) ? ((s.open - s.previousClose) / s.previousClose) * 100 : 0, isGapUp: false })).filter(s => Math.abs(s.gapPct) > 0.05).sort((a, b) => b.gapPct - a.gapPct).slice(0, 25);
+                gd.forEach(d => { d.isGapUp = d.gapPct > 0; });
+                gapChartInstance = new Chart(ctx, { type: 'bar', data: { labels: gd.map(d => d.symbol), datasets: [{ label: 'Gap %', data: gd.map(d => d.gapPct), backgroundColor: gd.map(d => d.isGapUp ? 'rgba(0,212,106,0.75)' : 'rgba(255,59,85,0.75)'), borderColor: gd.map(d => d.isGapUp ? '#00d46a' : '#ff3b55'), borderWidth: 1, borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return 'Gap: ' + ctx.raw.toFixed(2) + '%'; } } } }, scales: { x: { ticks: { color: '#8893a7', font: { size: 8 }, maxRotation: 45, minRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } }, y: { ticks: { color: '#8893a7', font: { size: 9 }, callback: function (v) { return v.toFixed(1) + '%'; } }, grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Gap %', color: '#8893a7' } } } } });
+            }
+
+            function renderMomentum(stocks, hist) {
+                const tb = document.getElementById('momoBody'); const sc = stocks.map(s => ({ ...s, momScore: calcMomScore(s, []) })).sort((a, b) => b.momScore - a.momScore).slice(0, 20);
+                tb.innerHTML = sc.map((s, i) => {
+                    const sig = s.momScore >= 70 ? '🟢 BUY' : s.momScore >= 55 ? '🟡 HOLD' : '🔴 SELL';
+                    const sc2 = s.momScore >= 70 ? 'var(--green)' : s.momScore >= 55 ? 'var(--gold)' : 'var(--red)';
+                    return '<tr><td style="color:var(--text-muted);">' + (i + 1) + '</td><td style="font-weight:700;">' + s.symbol + '</td><td style="color:' + (s.pChange >= 0 ? 'var(--green)' : 'var(--red)') + ';font-weight:600;">₹' + s.lastPrice.toFixed(2) + '</td><td style="color:' + (s.pChange >= 0 ? 'var(--green)' : 'var(--red)') + ';font-weight:600;">' + (s.pChange >= 0 ? '+' : '') + s.pChange.toFixed(2) + '%</td><td style="font-size:10px;color:var(--text-secondary);">' + fmtVol(s.totalTradedVolume) + '</td><td style="font-weight:700;color:' + sc2 + ';">' + s.momScore.toFixed(0) + '</td><td style="font-weight:700;color:' + sc2 + ';">' + sig + '</td></tr>';
+                }).join('');
+            }
+
+            function renderAlerts(spikes, alertHist) {
+                const feed = document.getElementById('alertsFeed');
+                document.getElementById('alertCount').textContent = spikes.length + ' signals';
+                if (spikes.length === 0) { feed.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px;">No active alerts</div>'; return; }
+                feed.innerHTML = alertHist.slice(0, 50).map(a => {
+                    let ac = a.isBullish ? 'buy' : 'sell'; if (a.reasons.some(r => r.type.includes('REVERSAL'))) ac = 'warn';
+                    return '<div class="alert-item ' + ac + '"><div class="alert-header"><span class="alert-sym">' + (a.isBullish ? '📈' : '📉') + ' ' + a.symbol + '</span><span class="alert-score">AI Confidence: ' + Math.round(a.momentumScore) + '%</span></div><div class="alert-msg">' + a.reasons.map(r => r.msg).join(' | ') + '</div><div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-size:10px;color:var(--text-muted);">₹' + a.lastPrice.toFixed(2) + ' | ' + (a.pChange >= 0 ? '+' : '') + a.pChange.toFixed(2) + '%</span><span style="font-size:9px;color:var(--text-muted);">' + new Date(a.timestamp).toLocaleTimeString('en-IN') + '</span></div></div>';
+                }).join('');
+            }
+
+            function renderTicker(stocks) {
+                const tr = document.getElementById('tickerTrack'); if (stocks.length === 0) return;
+                tr.innerHTML = [...stocks, ...stocks].map(s => '<span class="ticker-item ' + (s.pChange >= 0 ? 'up' : 'down') + '"><span class="ticker-sym">' + s.symbol + '</span><span>₹' + s.lastPrice.toFixed(2) + '</span><span>' + (s.pChange >= 0 ? '▲' : '▼') + ' ' + Math.abs(s.pChange).toFixed(2) + '%</span></span>').join('');
+            }
+
+            // ============================================================
+            // ALERT HISTORY ACCUMULATOR
+            // ============================================================
+            const alertHistory$ = spikes$.pipe(
+                scan((hist, { spikes }) => {
+                    const now = Date.now();
+                    spikes.forEach(s => { const ex = hist.findIndex(a => a.symbol === s.symbol && a._ts > now - 60000); if (ex === -1) hist.unshift({ ...s, _ts: now }); });
+                    return hist.slice(0, 50);
+                }, []),
+                shareReplay(1)
+            );
+
+            // ============================================================
+            // COUNT UPDATES
+            // ============================================================
+            const updateCountAcc$ = dataTick$.pipe(scan(c => c + 1, 0), startWith(0));
+
+            // ============================================================
+            // COMBINE ALL STREAMS FOR RENDERING
+            // ============================================================
+            const render$ = combineLatest([spikes$, sectors$, alertHistory$, updateCountAcc$, spikeFilter$, heatmapMode$, sectorFilter$]).pipe(
+                tap(([{ spikes, stocks, hist }, sectors, alertHist, count, spikeFilt, hmMode, secFilt]) => {
+                    renderOverview(stocks, sectors, spikes.length);
+                    renderSpikeFeed(spikes, spikeFilt);
+                    renderSectors(sectors, secFilt);
+                    if (hmMode === 'gap') {
+                        document.getElementById('heatmapGrid').style.display = 'none';
+                        document.getElementById('gapChartCanvas').style.display = 'block';
+                        renderGapChart(stocks);
+                    } else {
+                        document.getElementById('heatmapGrid').style.display = '';
+                        document.getElementById('gapChartCanvas').style.display = 'none'; if (gapChartInstance) {
+                            gapChartInstance.destroy();
+                            gapChartInstance = null;
+                        } renderHeatmap(stocks);
+                    }
+                    renderMomentum(stocks, hist);
+                    renderAlerts(spikes, alertHist);
+                    renderTicker(stocks);
+                    document.getElementById('updateCount').textContent = 'Updates: ' + count;
+                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-IN');
+                    document.getElementById('statusText').textContent = autoRefresh$.value ? 'Live' : 'Paused';
+                    document.getElementById('liveDot').style.background = 'var(--neon-green)';
+                })
+            );
+
+            // ============================================================
+            // NEW SPIKE FLASH ALERTS (only on new spikes)
+            // ============================================================
+            const prevSpikeSyms$ = spikes$.pipe(
+                map(({ spikes }) => spikes.map(s => s.symbol)),
+                startWith([]),
+                pairwise(),
+                map(([prev, curr]) => ({ prev, curr }))
+            );
+
+            const newSpikes$ = combineLatest([spikes$, prevSpikeSyms$]).pipe(
+                tap(([{ spikes }, { prev }]) => {
+                    const brandNew = spikes.filter(s => !prev.includes(s.symbol));
+                    brandNew.forEach(s => {
+                        if (s.isBullish && s.reasons.some(r => r.type.includes('SPIKE') || r.type.includes('HIGH'))) {
+                            showToast('🚀 ' + s.symbol + ': ' + s.reasons[0].msg, 'bullish');
+                            playBuy();
+                            sendNotif('Bullish Spike', s.symbol + ' — ' + s.reasons[0].msg + ' (' + s.pChange.toFixed(2) + '%)');
+                        }
+                        if (!s.isBullish && s.reasons.some(r => r.type.includes('SPIKE') || r.type.includes('DUMP'))) {
+                            showToast('🔻 ' + s.symbol + ': ' + s.reasons[0].msg, 'bearish');
+                            playSell();
+                            sendNotif('Bearish Dump', s.symbol + ' — ' + s.reasons[0].msg + ' (' + s.pChange.toFixed(2) + '%)');
+                        }
+                        if (s.reasons.some(r => r.type.includes('VOLUME'))) playSpike();
+                    });
+                })
+            );
+
+            // ============================================================
+            // SUBSCRIBE TO ALL STREAMS
+            // ============================================================
+            const subs = [
+                render$.subscribe(),
+                newSpikes$.subscribe(),
+            ];
+
+            // ============================================================
+            // EXTERNAL FUNCTIONS (exposed on window for onclick)
+            // ============================================================
+            window.setSpikeFilter = function (f) {
+                spikeFilter$.next(f);
+                const allBtns = ['spikeFiltAll', 'spikeFiltSpike', 'spikeFiltVolume', 'spikeFiltBreakout', 'spikeFiltReversal', 'spikeFiltBullish', 'spikeFiltBearish'];
+                allBtns.forEach(id => {
+                    const b = document.getElementById(id); if (!b) return;
+                    b.style.background = 'var(--card-bg)';
+                    b.style.color = 'var(--text)';
+                    b.style.borderColor = 'var(--border)';
+                });
+                const ab = document.getElementById('spikeFilt' + f.charAt(0).toUpperCase() + f.slice(1)); if (ab) {
+                    ab.style.background = 'var(--accent)';
+                    ab.style.color = '#fff';
+                    ab.style.borderColor = 'var(--accent)';
+                }
+            };
+            window.toggleAutoRefresh = function () {
+                const v = !autoRefresh$.value;
+                autoRefresh$.next(v); const b = document.getElementById('btnAutoRefresh');
+                b.textContent = v ? '⏸ Pause' : '▶ Resume';
+                b.className = v ? 'btn' : 'btn btn-accent';
+            };
+            window.forceRefresh = function () { manualRefresh$.next(); };
+            window.setSectorFilter = function (f) {
+                sectorFilter$.next(f);
+                const allBtns = ['sectorFiltAll', 'sectorFiltBullish', 'sectorFiltBearish', 'sectorFiltStrong', 'sectorFiltWeak'];
+                allBtns.forEach(id => { const b = document.getElementById(id); if (!b) return; b.style.background = 'var(--card-bg)'; b.style.color = 'var(--text)'; b.style.borderColor = 'var(--border)'; });
+                const ab = document.getElementById('sectorFilt' + f.charAt(0).toUpperCase() + f.slice(1));
+                if (ab) { ab.style.background = 'var(--accent)'; ab.style.color = '#fff'; ab.style.borderColor = 'var(--accent)'; }
+            };
+            window.toggleHeatmapMode = function () {
+                const v = heatmapMode$.value === 'heatmap' ? 'gap' : 'heatmap';
+                heatmapMode$.next(v); const btn = document.getElementById('btnHeatmapToggle'), t = document.getElementById('heatmapTitle'), st = document.getElementById('heatmapSubtitle');
+                if (v === 'gap') {
+                    btn.textContent = '🗺 Heatmap';
+                    t.textContent = '📊 Gap Up / Gap Down Chart';
+                    st.textContent = 'Green = Gap Up | Red = Gap Down | % from prev close';
+                } else {
+                    btn.textContent = '📊 Gap Chart';
+                    t.textContent = '🗺 Sector Heatmap';
+                    st.textContent = 'Color = performance | Size = volume';
+                }
+            };
+            window.enableNotifications = function () {
+                if (!('Notification' in window)) { alert('No notification support'); return; } if (Notification.permission === 'granted') {
+                    notificationsEnabled$.next(true);
+                    showToast('🔔 Notifications enabled!', 'info'); return;
+                }
+                Notification.requestPermission().then(p => {
+                    if (p === 'granted') {
+                        notificationsEnabled$.next(true);
+                        showToast('🔔 Notifications enabled!', 'info');
+                    }
+                });
+            };
+            window.exportCSV = function () {
+                dataTick$.pipe(take(1)).subscribe(stocks => {
+                    if (stocks.length === 0) { alert('No data'); return; } const h = ['symbol', 'companyName', 'industry', 'lastPrice', 'change', 'pChange', 'totalTradedVolume', 'totalTradedValue', 'dayHigh', 'dayLow', 'yearHigh', 'yearLow', 'momentumScore'];
+                    const rows = stocks.map(s => [s.symbol, '"' + s.companyName + '"', s.industry, s.lastPrice, s.change, s.pChange, s.totalTradedVolume, s.totalTradedValue, s.dayHigh, s.dayLow, s.yearHigh, s.yearLow, calcMomScore(s, [])].join(','));
+                    const csv = [h.join(','), ...rows].join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' }), url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'nifty50_ai_' + new Date().toISOString().slice(0, 10) + '.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('📥 CSV exported!', 'info');
+                });
+            };
+            window.filterDashboard = function () {
+                const q = document.getElementById('searchBox').value.trim().toUpperCase();
+                searchQuery$.next(q);
+                if (!q) return;
+                dataTick$.pipe(take(1)).subscribe(stocks => {
+                    const f = stocks.filter(s => s.symbol.toUpperCase().includes(q) || s.companyName.toUpperCase().includes(q) || (s.industry || '').toUpperCase().includes(q));
+                    if (f.length === 1) showToast('🔍 ' + f[0].symbol + ': ₹' + f[0].lastPrice.toFixed(2) + ' | ' + f[0].pChange.toFixed(2) + '% | ' + f[0].companyName, f[0].pChange >= 0 ? 'bullish' : 'bearish');
+                });
+            };
+
+            // ============================================================
+            // INIT
+            // ============================================================
+            document.addEventListener('DOMContentLoaded', function () {
+                document.getElementById('statusText').textContent = 'Fetching NIFTY 50 data...';
+                document.getElementById('liveDot').style.background = 'var(--gold)';
+                document.addEventListener('click', function nf() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }, { once: true });
+            });
+
+            console.log('%c⚡ AI MARKET SPIKE DETECTION TERMINAL %cRXJS REACTIVE',
+                'color:#39ff9c;font-size:16px;font-weight:bold;', 'color:#8893a7;');
+            console.log('%cArchitecture: interval→switchMap→fetch | BehaviorSubjects | combineLatest→tap | scan for history',
+                'color:#4d8af0;');
+            console.log('%cStreams: dataTick$ | pairedData$ | spikes$ | sectors$ | alertHistory$ | render$ | newSpikes$',
+                'color:#5c6678;');
+        })();
+    </script>
+</body>
+
+</html>

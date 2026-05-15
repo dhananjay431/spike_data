@@ -1,0 +1,199 @@
+Create an AI-powered Real-Time Market Spike Detection Dashboard.
+
+Objective:
+Build a professional dashboard that continuously monitors live stock market JSON data and instantly detects sudden spikes, unusual movements, high volume activity, breakout patterns, and abnormal price changes.
+
+Data Format:
+Use market data JSON structure similar to:
+
+* symbol
+* open
+* dayHigh
+* dayLow
+* lastPrice
+* previousClose
+* change
+* pChange
+* totalTradedVolume
+* totalTradedValue
+* yearHigh
+* yearLow
+* timestamp
+* companyName
+* industry
+
+Example:
+
+* RELIANCE
+* INFY
+* SBIN
+* HDFCBANK
+* TCS
+* ADANIENT
+
+Core Features:
+
+1. Real-Time Monitoring
+
+* Monitor live market data continuously
+* Refresh every 5 seconds or via WebSocket
+* Detect real-time spikes instantly
+* Auto-update UI without refresh
+
+2. Sudden Spike Detection
+   Detect:
+
+* Sudden price increase %
+* Sudden price drop %
+* Volume breakout
+* High volatility
+* Momentum breakout
+* Near dayHigh breakout
+* Near yearHigh breakout
+* Abnormal traded value increase
+* Fast moving stocks
+* Circuit-like movement
+
+3. AI Detection Logic
+   Create smart alert conditions:
+
+* pChange > 2%
+* volume spike > 200%
+* price breakout near dayHigh
+* sudden momentum within 5 min
+* unusual buying activity
+* sector-wide movement
+* bullish/bearish reversal
+* fake breakout detection
+
+4. Visual Dashboard UI
+   Create visually attractive dashboard using:
+
+* Heatmaps
+* Live ticker
+* Candlestick charts
+* Volume bars
+* Momentum gauges
+* Treemap
+* Sparkline charts
+* Radar charts
+* Animated alert cards
+
+5. Dashboard Sections
+   A. Live Spike Feed
+
+* Show stocks with sudden movement
+* Highlight gainers in green
+* Highlight losers in red
+* Flash alerts for high spikes
+
+B. Volume Explosion Panel
+
+* Compare current volume vs average volume
+* Show top unusual activity
+
+C. Smart AI Alerts
+
+* Buy signal
+* Sell signal
+* Breakout signal
+* Reversal signal
+
+D. Sector Analysis
+
+* Banking
+* IT
+* Pharma
+* Metal
+* Energy
+* Auto
+
+E. Market Strength Meter
+
+* Bullish %
+* Bearish %
+* Market breadth
+* Advance/Decline ratio
+
+6. Advanced Analytics
+
+* Calculate momentum score
+* Relative strength
+* VWAP analysis
+* RSI indicator
+* MACD indicator
+* Support/resistance breakout
+* Trend strength score
+
+7. Alert System
+   Trigger alerts:
+
+* Browser notification
+* Sound alert
+* Telegram alert
+* Email alert
+* WhatsApp alert
+
+8. Technical Stack
+   Frontend:
+
+* React / Next.js
+* Tailwind CSS
+* TradingView Charts
+* Recharts / ApexCharts
+* Framer Motion animations
+
+Backend:
+
+* Node.js + Express
+* WebSocket server
+* Redis cache
+* MongoDB/PostgreSQL
+
+9. UI Design
+   Design should look like:
+
+* TradingView
+* Bloomberg Terminal
+* Zerodha Pulse
+* Professional trading dashboard
+
+Use:
+
+* Dark theme
+* Neon glow alerts
+* Glassmorphism cards
+* Smooth animations
+* Responsive layout
+
+10. Smart Highlight Rules
+    Highlight visually when:
+
+* pChange > 3%
+* volume > 2x average
+* near yearHigh < 5%
+* large cap stock moving fast
+* sector movement synchronized
+
+11. Additional Features
+
+* Search stock instantly
+* Filter by sector
+* Watchlist
+* Favorite stocks
+* Historical spike replay
+* AI prediction panel
+* Export data CSV/PDF
+
+12. Output Requirements
+    Generate:
+
+* Complete frontend code
+* Backend API structure
+* WebSocket implementation
+* Mock JSON data integration
+* Reusable components
+* Real-time state management
+* Folder structure
+* Environment variables
+* Production-ready scalable architecture

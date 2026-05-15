@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIFTY 50 - Live Market Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
+    </script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-secondary: #8b949e;
+            --green: #3fb950;
+            --red: #f85149;
+            --accent: #58a6ff;
+            --gold: #d2991d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 16px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .header-left h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-left .timestamp {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .market-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .market-status.closed {
+            background: rgba(248, 81, 73, 0.12);
+            color: var(--red);
+        }
+
+        .market-status.open {
+            background: rgba(63, 185, 80, 0.12);
+            color: var(--green);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.closed {
+            background: var(--red);
+        }
+
+        .status-dot.open {
+            background: var(--green);
+        }
+
+        /* Index Summary */
+        .index-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 20px;
+        }
+
+        .summary-card .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .summary-card .sub {
+            font-size: 0.8rem;
+            margin-top: 2px;
+        }
+
+        .value.positive {
+            color: var(--green);
+        }
+
+        .value.negative {
+            color: var(--red);
+        }
+
+        /* Charts Row */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .chart-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 320px;
+        }
+
+        .chart-wrap canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Stock Table */
+        .table-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .table-card h3 {
+            padding: 14px 20px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        th {
+            background: #1c2129;
+            padding: 10px 14px;
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        th:first-child {
+            text-align: left;
+        }
+
+        th:nth-child(2) {
+            text-align: left;
+        }
+
+        td {
+            padding: 9px 14px;
+            text-align: right;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+            white-space: nowrap;
+        }
+
+        td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td:nth-child(2) {
+            text-align: left;
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+        }
+
+        tbody tr:hover {
+            background: rgba(88, 166, 255, 0.04);
+        }
+
+        .pos {
+            color: var(--green);
+        }
+
+        .neg {
+            color: var(--red);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            padding: 8px;
+        }
+
+        /* Refresh Button */
+        .refresh-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.82rem;
+            transition: opacity 0.2s;
+        }
+
+        .refresh-btn:hover {
+            opacity: 0.85;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .adv-decl {
+            display: flex;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .adv-decl span.adv {
+            color: var(--green);
+        }
+
+        .adv-decl span.dec {
+            color: var(--red);
+        }
+
+        @media (max-width: 768px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+
+            .index-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <h1>📈 NIFTY 50</h1>
+            <div class="timestamp" id="timestamp">Loading...</div>
+        </div>
+        <div class="adv-decl" id="advDecl"></div>
+        <div class="market-status closed" id="marketStatus">
+            <span class="status-dot closed"></span>
+            <span id="marketStatusText">Loading...</span>
+        </div>
+        <button class="refresh-btn" id="refreshBtn" onclick="loadData()">🔄 Refresh Data</button>
+    </div>
+
+    <!-- Index Summary -->
+    <div class="index-summary" id="indexSummary"></div>
+
+    <!-- Charts -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>📊 Top 10 by % Change</h3>
+            <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>🥧 Market Cap Distribution (Top 10)</h3>
+            <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <h3>📋 All Constituents</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Company</th>
+                        <th>LTP</th>
+                        <th>Change</th>
+                        <th>%Change</th>
+                        <th>Open</th>
+                        <th>High</th>
+                        <th>Low</th>
+                        <th>Volume</th>
+                        <th>Value (Cr)</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="footer">
+        Data sourced from NSE India • Not for trading advice • Auto-refreshes every 5 minutes (during market hours)
+    </div>
+
+    <script>
+        // ===== EMBEDDED DATA (latest fetch) =====
+        const EMBEDDED_DATA = { "name": "NIFTY 50", "advance": { "declines": "24", "advances": "25", "unchanged": "1" }, "timestamp": "15-May-2026 15:54:03", "data": [{ "priority": 1, "symbol": "NIFTY 50", "identifier": "NIFTY 50", "open": 23731.4, "dayHigh": 23839.3, "dayLow": 23610.3, "lastPrice": 23643.5, "previousClose": 23689.6, "change": -46.099999999998545, "pChange": -0.19, "ffmc": 1082605305.51, "yearHigh": 26373.2, "yearLow": 22182.55, "totalTradedVolume": 408857283, "stockIndClosePrice": 0, "totalTradedValue": 350517109042.12, "lastUpdateTime": "15-May-2026 15:54:03", "nearWKH": 10.350279829523913, "nearWKL": -6.586032714904285, "perChange365d": -5.66, "perChange30d": -2.43, "date365dAgo": "14-May-2025", "date30dAgo": "13-Apr-2026", "chartTodayPath": "https://nsearchives.nseindia.com/today/NIFTY-50.svg", "chart30dPath": "https://nsearchives.nseindia.com/30d/NIFTY-50.svg", "chart365dPath": "https://nsearchives.nseindia.com/365d/NIFTY-50.svg" }, { "priority": 0, "symbol": "BHARTIARTL", "identifier": "BHARTIARTLEQN", "series": "EQ", "open": 1883.2, "dayHigh": 1922.9, "dayLow": 1880.4, "lastPrice": 1904, "previousClose": 1883.5, "change": 20.5, "pChange": 1.09, "totalTradedVolume": 15807243, "stockIndClosePrice": 0, "totalTradedValue": 30133189258.47, "yearHigh": 2174.5, "ffmc": 5827887542942.03, "yearLow": 1740.5, "meta": { "symbol": "BHARTIARTL", "companyName": "Bharti Airtel Limited", "industry": "Telecom - Cellular & Fixed line services" } }, { "priority": 0, "symbol": "RELIANCE", "identifier": "RELIANCEEQN", "series": "EQ", "open": 1356.8, "dayHigh": 1364.8, "dayLow": 1329.2, "lastPrice": 1339, "previousClose": 1361.8, "change": -22.8, "pChange": -1.67, "totalTradedVolume": 19975782, "totalTradedValue": 26754963137.34, "yearHigh": 1611.8, "ffmc": 9018775276471.88, "yearLow": 1290, "meta": { "symbol": "RELIANCE", "companyName": "Reliance Industries Limited", "industry": "Refineries & Marketing" } }, { "priority": 0, "symbol": "SBIN", "identifier": "SBINEQN", "series": "EQ", "open": 971.2, "dayHigh": 972.5, "dayLow": 957, "lastPrice": 961.6, "previousClose": 979.9, "change": -1, "pChange": -0.1, "totalTradedVolume": 26971947, "totalTradedValue": 26073781164.9, "yearHigh": 1234.7, "ffmc": 3979209995119.35, "yearLow": 779.1, "meta": { "symbol": "SBIN", "companyName": "State Bank of India", "industry": "Public Sector Bank" } }, { "priority": 0, "symbol": "INFY", "identifier": "INFYEQN", "series": "EQ", "open": 1102, "dayHigh": 1133.2, "dayLow": 1101.6, "lastPrice": 1116, "previousClose": 1095, "change": 21, "pChange": 1.92, "totalTradedVolume": 17482336, "totalTradedValue": 19591055368.32, "yearHigh": 1728, "ffmc": 3902074687602.18, "yearLow": 1089, "meta": { "symbol": "INFY", "companyName": "Infosys Limited", "industry": "Computers - Software & Consulting" } }, { "priority": 0, "symbol": "HDFCBANK", "identifier": "HDFCBANKEQN", "series": "EQ", "open": 773, "dayHigh": 781.9, "dayLow": 765.4, "lastPrice": 770, "previousClose": 769.55, "change": 0.45, "pChange": 0.06, "totalTradedVolume": 24347790, "totalTradedValue": 18848354672.7, "yearHigh": 1020.5, "ffmc": 11754118938306.72, "yearLow": 726.65, "meta": { "symbol": "HDFCBANK", "companyName": "HDFC Bank Limited", "industry": "Private Sector Bank" } }, { "priority": 0, "symbol": "TMPV", "identifier": "TMPVEQN", "series": "EQ", "open": 352, "dayHigh": 366.95, "dayLow": 352, "lastPrice": 356.15, "previousClose": 338.75, "change": 17.4, "pChange": 5.14, "totalTradedVolume": 51689363, "totalTradedValue": 18523400124.68, "yearHigh": 744, "ffmc": 743821104757.18, "yearLow": 294.3, "meta": { "symbol": "TMPV", "companyName": "Tata Motors Passenger Vehicles Limited", "industry": "Passenger Cars & Utility Vehicles" } }, { "priority": 0, "symbol": "ADANIENT", "identifier": "ADANIENTEQN", "series": "EQ", "open": 2781.1, "dayHigh": 2803.1, "dayLow": 2661, "lastPrice": 2718, "previousClose": 2712.9, "change": 5.1, "pChange": 0.19, "totalTradedVolume": 6742081, "totalTradedValue": 18451457597.56, "yearHigh": 2803.1, "ffmc": 776717613509.86, "yearLow": 1753, "meta": { "symbol": "ADANIENT", "companyName": "Adani Enterprises Limited", "industry": "Trading - Minerals" } }, { "priority": 0, "symbol": "ICICIBANK", "identifier": "ICICIBANKEQN", "series": "EQ", "open": 1246.6, "dayHigh": 1258, "dayLow": 1242, "lastPrice": 1247.9, "previousClose": 1246, "change": 1.9, "pChange": 0.15, "totalTradedVolume": 11745614, "totalTradedValue": 14658173903.58, "yearHigh": 1500, "ffmc": 8909622300017.5, "yearLow": 1187.6, "meta": { "symbol": "ICICIBANK", "companyName": "ICICI Bank Limited", "industry": "Private Sector Bank" } }, { "priority": 0, "symbol": "ADANIPORTS", "identifier": "ADANIPORTSEQN", "series": "EQ", "open": 1796.8, "dayHigh": 1823.9, "dayLow": 1766.2, "lastPrice": 1791, "previousClose": 1773.4, "change": 17.6, "pChange": 0.99, "totalTradedVolume": 5622110, "totalTradedValue": 10125813657.7, "yearHigh": 1823.9, "ffmc": 1317573070287.58, "yearLow": 1290.5, "meta": { "symbol": "ADANIPORTS", "companyName": "Adani Ports and Special Economic Zone Limited", "industry": "Port & Port services" } }, { "priority": 0, "symbol": "TCS", "identifier": "TCSEQN", "series": "EQ", "open": 2252, "dayHigh": 2304.9, "dayLow": 2252, "lastPrice": 2267, "previousClose": 2246, "change": 21, "pChange": 0.93, "totalTradedVolume": 3410574, "totalTradedValue": 7776313354.44, "yearHigh": 3623, "ffmc": 2308526833719.28, "yearLow": 2206.4, "meta": { "symbol": "TCS", "companyName": "Tata Consultancy Services Limited", "industry": "Computers - Software & Consulting" } }, { "priority": 0, "symbol": "KOTAKBANK", "identifier": "KOTAKBANKEQN", "series": "EQ", "open": 383.2, "dayHigh": 393.3, "dayLow": 380.5, "lastPrice": 388.5, "previousClose": 383.2, "change": 5.3, "pChange": 1.38, "totalTradedVolume": 19461324, "totalTradedValue": 7569287356.56, "yearHigh": 453.2, "ffmc": 2852136311759.59, "yearLow": 345.5, "meta": { "symbol": "KOTAKBANK", "companyName": "Kotak Mahindra Bank Limited", "industry": "Private Sector Bank" } }, { "priority": 0, "symbol": "HINDALCO", "identifier": "HINDALCOEQN", "series": "EQ", "open": 1101.2, "dayHigh": 1101.2, "dayLow": 1057.6, "lastPrice": 1065, "previousClose": 1103.3, "change": -38.3, "pChange": -3.47, "totalTradedVolume": 6800905, "totalTradedValue": 7311244911.2, "yearHigh": 1105, "ffmc": 1537221359333.63, "yearLow": 618, "meta": { "symbol": "HINDALCO", "companyName": "Hindalco Industries Limited", "industry": "Aluminium" } }, { "priority": 0, "symbol": "TATASTEEL", "identifier": "TATASTEELEQN", "series": "EQ", "open": 223, "dayHigh": 224.4, "dayLow": 216, "lastPrice": 217, "previousClose": 221.13, "change": -4.13, "pChange": -1.87, "totalTradedVolume": 33230988, "totalTradedValue": 7288552598.04, "yearHigh": 224.4, "ffmc": 1788549030301.87, "yearLow": 149.01, "meta": { "symbol": "TATASTEEL", "companyName": "Tata Steel Limited", "industry": "Iron & Steel" } }, { "priority": 0, "symbol": "TECHM", "identifier": "TECHMEQN", "series": "EQ", "open": 1350, "dayHigh": 1387.7, "dayLow": 1350, "lastPrice": 1367.5, "previousClose": 1343.4, "change": 24.1, "pChange": 1.79, "totalTradedVolume": 5306922, "totalTradedValue": 7283803514.22, "yearHigh": 1854, "ffmc": 865881335880.51, "yearLow": 1304.1, "meta": { "symbol": "TECHM", "companyName": "Tech Mahindra Limited", "industry": "Computers - Software & Consulting" } }, { "priority": 0, "symbol": "M&M", "identifier": "M&MEQN", "series": "EQ", "open": 3170, "dayHigh": 3188.9, "dayLow": 3111, "lastPrice": 3128.4, "previousClose": 3173.9, "change": -45.5, "pChange": -1.43, "totalTradedVolume": 2196367, "totalTradedValue": 6901753842.45, "yearHigh": 3839.9, "ffmc": 2787702695727.3, "yearLow": 2896, "meta": { "symbol": "M&M", "companyName": "Mahindra & Mahindra Limited", "industry": "Passenger Cars & Utility Vehicles" } }, { "priority": 0, "symbol": "AXISBANK", "identifier": "AXISBANKEQN", "series": "EQ", "open": 1259.6, "dayHigh": 1263.4, "dayLow": 1242, "lastPrice": 1245.5, "previousClose": 1254.6, "change": -9.1, "pChange": -0.73, "totalTradedVolume": 4805485, "totalTradedValue": 6012863106.25, "yearHigh": 1418.3, "ffmc": 3565036400988.16, "yearLow": 1042.5, "meta": { "symbol": "AXISBANK", "companyName": "Axis Bank Limited", "industry": "Private Sector Bank" } }, { "priority": 0, "symbol": "SHRIRAMFIN", "identifier": "SHRIRAMFINEQN", "series": "EQ", "open": 921, "dayHigh": 945.9, "dayLow": 921, "lastPrice": 936, "previousClose": 935.1, "change": 0.9, "pChange": 0.1, "totalTradedVolume": 5759457, "totalTradedValue": 5398454235.24, "yearHigh": 1108, "ffmc": 1307184778773.08, "yearLow": 566.5, "meta": { "symbol": "SHRIRAMFIN", "companyName": "Shriram Finance Limited", "industry": "Non Banking Financial Company (NBFC)" } }, { "priority": 0, "symbol": "DRREDDY", "identifier": "DRREDDYEQN", "series": "EQ", "open": 1303.6, "dayHigh": 1344.9, "dayLow": 1303.6, "lastPrice": 1343.2, "previousClose": 1303.6, "change": 39.6, "pChange": 3.04, "totalTradedVolume": 3982516, "totalTradedValue": 5284161529.44, "yearHigh": 1379.7, "ffmc": 816246340927.42, "yearLow": 1148.4, "meta": { "symbol": "DRREDDY", "companyName": "Dr. Reddy's Laboratories Limited", "industry": "Pharmaceuticals" } }, { "priority": 0, "symbol": "LT", "identifier": "LTEQN", "series": "EQ", "open": 3949.4, "dayHigh": 3949.4, "dayLow": 3893, "lastPrice": 3905.1, "previousClose": 3940.4, "change": -35.3, "pChange": -0.9, "totalTradedVolume": 1339160, "totalTradedValue": 5249507200, "yearHigh": 4440, "ffmc": 4572384750235.1, "yearLow": 3288.1, "meta": { "symbol": "LT", "companyName": "Larsen & Toubro Limited", "industry": "Civil Construction" } }, { "priority": 0, "symbol": "SUNPHARMA", "identifier": "SUNPHARMAEQN", "series": "EQ", "open": 1874, "dayHigh": 1887.9, "dayLow": 1863.2, "lastPrice": 1878, "previousClose": 1863.2, "change": 14.8, "pChange": 0.79, "totalTradedVolume": 2756426, "totalTradedValue": 5177560341.36, "yearHigh": 1887.9, "ffmc": 1982866299719.45, "yearLow": 1548, "meta": { "symbol": "SUNPHARMA", "companyName": "Sun Pharmaceutical Industries Limited", "industry": "Pharmaceuticals" } }, { "priority": 0, "symbol": "JSWSTEEL", "identifier": "JSWSTEELEQN", "series": "EQ", "open": 1314, "dayHigh": 1314, "dayLow": 1274.2, "lastPrice": 1279, "previousClose": 1296.9, "change": -17.9, "pChange": -1.38, "totalTradedVolume": 3871543, "totalTradedValue": 5003195018.9, "yearHigh": 1314, "ffmc": 1195808394142.04, "yearLow": 962.15, "meta": { "symbol": "JSWSTEEL", "companyName": "JSW Steel Limited", "industry": "Iron & Steel" } }, { "priority": 0, "symbol": "NESTLEIND", "identifier": "NESTLEINDEQN", "series": "EQ", "open": 1459.6, "dayHigh": 1467.5, "dayLow": 1427.5, "lastPrice": 1432.2, "previousClose": 1459.6, "change": -27.4, "pChange": -1.88, "totalTradedVolume": 3292924, "totalTradedValue": 4746058431.96, "yearHigh": 1498.1, "ffmc": 1023989381884.84, "yearLow": 1084.7, "meta": { "symbol": "NESTLEIND", "companyName": "Nestle India Limited", "industry": "Packaged Foods" } }, { "priority": 0, "symbol": "GRASIM", "identifier": "GRASIMEQN", "series": "EQ", "open": 2938.9, "dayHigh": 2968.4, "dayLow": 2924.3, "lastPrice": 2939.9, "previousClose": 2938.7, "change": 1.2, "pChange": 0.04, "totalTradedVolume": 1586864, "totalTradedValue": 4674615708.48, "yearHigh": 3007.3, "ffmc": 1116096283605.62, "yearLow": 2502.5, "meta": { "symbol": "GRASIM", "companyName": "Grasim Industries Limited", "industry": "Cement & Cement Products" } }, { "priority": 0, "symbol": "BAJFINANCE", "identifier": "BAJFINANCEEQN", "series": "EQ", "open": 913, "dayHigh": 921.6, "dayLow": 907.35, "lastPrice": 910, "previousClose": 912.15, "change": -2.15, "pChange": -0.24, "totalTradedVolume": 5012273, "totalTradedValue": 4587633231.44, "yearHigh": 1102.5, "ffmc": 2428941265108.23, "yearLow": 787.9, "meta": { "symbol": "BAJFINANCE", "companyName": "Bajaj Finance Limited", "industry": "Non Banking Financial Company (NBFC)" } }, { "priority": 0, "symbol": "ETERNAL", "identifier": "ETERNALEQN", "series": "EQ", "open": 245, "dayHigh": 245.72, "dayLow": 240.41, "lastPrice": 241, "previousClose": 245.82, "change": -4.82, "pChange": -1.96, "totalTradedVolume": 18278953, "totalTradedValue": 4444161842.89, "yearHigh": 368.45, "ffmc": 1731137222141.7, "yearLow": 212.6, "meta": { "symbol": "ETERNAL", "companyName": "ETERNAL LIMITED", "industry": "E-Retail/ E-Commerce" } }, { "priority": 0, "symbol": "HCLTECH", "identifier": "HCLTECHEQN", "series": "EQ", "open": 1121.9, "dayHigh": 1152, "dayLow": 1121.8, "lastPrice": 1131, "previousClose": 1124, "change": 7, "pChange": 0.62, "totalTradedVolume": 3729190, "totalTradedValue": 4239343192, "yearHigh": 1780.1, "ffmc": 1190147805132.63, "yearLow": 1103.4, "meta": { "symbol": "HCLTECH", "companyName": "HCL Technologies Limited", "industry": "Computers - Software & Consulting" } }, { "priority": 0, "symbol": "ONGC", "identifier": "ONGCEQN", "series": "EQ", "open": 303, "dayHigh": 304.95, "dayLow": 298.55, "lastPrice": 299.6, "previousClose": 300.9, "change": -1.3, "pChange": -0.43, "totalTradedVolume": 13695247, "totalTradedValue": 4116791248.2, "yearHigh": 307.5, "ffmc": 1160555076949.26, "yearLow": 228.61, "meta": { "symbol": "ONGC", "companyName": "Oil & Natural Gas Corporation Limited", "industry": "Oil Exploration & Production" } }, { "priority": 0, "symbol": "BAJAJFINSV", "identifier": "BAJAJFINSVEQN", "series": "EQ", "open": 1735.1, "dayHigh": 1755.8, "dayLow": 1721.9, "lastPrice": 1734.1, "previousClose": 1740.2, "change": -6.1, "pChange": -0.35, "totalTradedVolume": 2347834, "totalTradedValue": 4101102517.84, "yearHigh": 2195, "ffmc": 998074738815.01, "yearLow": 1597, "meta": { "symbol": "BAJAJFINSV", "companyName": "Bajaj Finserv Limited", "industry": "Holding Company" } }, { "priority": 0, "symbol": "TITAN", "identifier": "TITANEQN", "series": "EQ", "open": 4155, "dayHigh": 4194, "dayLow": 4142.4, "lastPrice": 4164.8, "previousClose": 4135.2, "change": 29.6, "pChange": 0.72, "totalTradedVolume": 901615, "totalTradedValue": 3759680453.1, "yearHigh": 4605, "ffmc": 1713761514010.77, "yearLow": 3303.1, "meta": { "symbol": "TITAN", "companyName": "Titan Company Limited", "industry": "Gems Jewellery And Watches" } }, { "priority": 0, "symbol": "ITC", "identifier": "ITCEQN", "series": "EQ", "open": 307.2, "dayHigh": 312.05, "dayLow": 306.3, "lastPrice": 309.2, "previousClose": 307.2, "change": 2, "pChange": 0.65, "totalTradedVolume": 11953971, "totalTradedValue": 3699514945.08, "yearHigh": 444.2, "ffmc": 2971885228535.3, "yearLow": 287, "meta": { "symbol": "ITC", "companyName": "ITC Limited", "industry": "Diversified FMCG" } }, { "priority": 0, "symbol": "COALINDIA", "identifier": "COALINDIAEQN", "series": "EQ", "open": 457, "dayHigh": 468.5, "dayLow": 455.25, "lastPrice": 462.4, "previousClose": 454.05, "change": 8.35, "pChange": 1.84, "totalTradedVolume": 7859323, "totalTradedValue": 3646804465.23, "yearHigh": 491.25, "ffmc": 1046891394012.04, "yearLow": 368.65, "meta": { "symbol": "COALINDIA", "companyName": "Coal India Limited", "industry": "Coal" } }, { "priority": 0, "symbol": "MARUTI", "identifier": "MARUTIEQN", "series": "EQ", "open": 13079, "dayHigh": 13325, "dayLow": 13079, "lastPrice": 13230, "previousClose": 13075, "change": 155, "pChange": 1.19, "totalTradedVolume": 268201, "totalTradedValue": 3542640188.9, "yearHigh": 17370, "ffmc": 1731124036308.1, "yearLow": 12016, "meta": { "symbol": "MARUTI", "companyName": "Maruti Suzuki India Limited", "industry": "Passenger Cars & Utility Vehicles" } }, { "priority": 0, "symbol": "TATACONSUM", "identifier": "TATACONSUMEQN", "series": "EQ", "open": 1228.8, "dayHigh": 1255.1, "dayLow": 1225.8, "lastPrice": 1235, "previousClose": 1228.3, "change": 6.7, "pChange": 0.55, "totalTradedVolume": 2755516, "totalTradedValue": 3411080811.56, "yearHigh": 1282.7, "ffmc": 801898909092.53, "yearLow": 1007.2, "meta": { "symbol": "TATACONSUM", "companyName": "TATA CONSUMER PRODUCTS LIMITED", "industry": "Tea & Coffee" } }, { "priority": 0, "symbol": "WIPRO", "identifier": "WIPROEQN", "series": "EQ", "open": 189.9, "dayHigh": 191.9, "dayLow": 188.8, "lastPrice": 190.29, "previousClose": 188.3, "change": 1.99, "pChange": 1.06, "totalTradedVolume": 17902536, "totalTradedValue": 3407389676.88, "yearHigh": 273.1, "ffmc": 542602375246.96, "yearLow": 186.5, "meta": { "symbol": "WIPRO", "companyName": "Wipro Limited", "industry": "Computers - Software & Consulting" } }, { "priority": 0, "symbol": "ULTRACEMCO", "identifier": "ULTRACEMCOEQN", "series": "EQ", "open": 11685, "dayHigh": 11730, "dayLow": 11463, "lastPrice": 11507, "previousClose": 11692, "change": -185, "pChange": -1.58, "totalTradedVolume": 284370, "totalTradedValue": 3294744944.4, "yearHigh": 13110, "ffmc": 1358865316208.56, "yearLow": 10325, "meta": { "symbol": "ULTRACEMCO", "companyName": "UltraTech Cement Limited", "industry": "Cement & Cement Products" } }, { "priority": 0, "symbol": "BEL", "identifier": "BELEQN", "series": "EQ", "open": 428.85, "dayHigh": 429.5, "dayLow": 422.2, "lastPrice": 424.75, "previousClose": 428.85, "change": -4.1, "pChange": -0.96, "totalTradedVolume": 7593616, "totalTradedValue": 3226983055.36, "yearHigh": 473.45, "ffmc": 1517072015337.51, "yearLow": 322.8, "meta": { "symbol": "BEL", "companyName": "Bharat Electronics Limited", "industry": "Aerospace & Defense" } }, { "priority": 0, "symbol": "POWERGRID", "identifier": "POWERGRIDEQN", "series": "EQ", "open": 307.8, "dayHigh": 308.15, "dayLow": 302.9, "lastPrice": 305.5, "previousClose": 301.75, "change": 3.75, "pChange": 1.24, "totalTradedVolume": 10090548, "totalTradedValue": 3088010404.44, "yearHigh": 324.95, "ffmc": 1379749175697.24, "yearLow": 250, "meta": { "symbol": "POWERGRID", "companyName": "Power Grid Corporation of India Limited", "industry": "Power - Transmission" } }, { "priority": 0, "symbol": "INDIGO", "identifier": "INDIGOEQN", "series": "EQ", "open": 4293, "dayHigh": 4359, "dayLow": 4277, "lastPrice": 4314.9, "previousClose": 4280.5, "change": 34.4, "pChange": 0.8, "totalTradedVolume": 713589, "totalTradedValue": 3080142695.49, "yearHigh": 6232.5, "ffmc": 973465841005.63, "yearLow": 3895.2, "meta": { "symbol": "INDIGO", "companyName": "InterGlobe Aviation Limited", "industry": "Airline" } }, { "priority": 0, "symbol": "NTPC", "identifier": "NTPCEQN", "series": "EQ", "open": 396, "dayHigh": 398, "dayLow": 392.5, "lastPrice": 395.75, "previousClose": 396.3, "change": -0.55, "pChange": -0.14, "totalTradedVolume": 7107750, "totalTradedValue": 2809196032.5, "yearHigh": 414.4, "ffmc": 1870932301486.63, "yearLow": 315.55, "meta": { "symbol": "NTPC", "companyName": "NTPC Limited", "industry": "Power Generation" } }, { "priority": 0, "symbol": "TRENT", "identifier": "TRENTEQN", "series": "EQ", "open": 4132.4, "dayHigh": 4144.4, "dayLow": 4032, "lastPrice": 4102.5, "previousClose": 4132.4, "change": -29.9, "pChange": -0.72, "totalTradedVolume": 683780, "totalTradedValue": 2790889096.8, "yearHigh": 6261, "ffmc": 907716734384.04, "yearLow": 3275.5, "meta": { "symbol": "TRENT", "companyName": "Trent Limited", "industry": "Speciality Retail" } }, { "priority": 0, "symbol": "JIOFIN", "identifier": "JIOFINEQN", "series": "EQ", "open": 234.9, "dayHigh": 235.95, "dayLow": 232.59, "lastPrice": 233.36, "previousClose": 234.13, "change": -0.77, "pChange": -0.33, "totalTradedVolume": 10455913, "totalTradedValue": 2447729233.3, "yearHigh": 338.6, "ffmc": 793207628772.57, "yearLow": 223.3, "meta": { "symbol": "JIOFIN", "companyName": "Jio Financial Services Limited", "industry": "Investment Company" } }, { "priority": 0, "symbol": "APOLLOHOSP", "identifier": "APOLLOHOSPEQN", "series": "EQ", "open": 8170, "dayHigh": 8170, "dayLow": 8028.5, "lastPrice": 8080, "previousClose": 8119, "change": -39, "pChange": -0.48, "totalTradedVolume": 300132, "totalTradedValue": 2427575663.52, "yearHigh": 8180, "ffmc": 829117096962.16, "yearLow": 6696.5, "meta": { "symbol": "APOLLOHOSP", "companyName": "Apollo Hospitals Enterprise Limited", "industry": "Hospital" } }, { "priority": 0, "symbol": "HINDUNILVR", "identifier": "HINDUNILVREQN", "series": "EQ", "open": 2248.7, "dayHigh": 2298.9, "dayLow": 2246.2, "lastPrice": 2270.1, "previousClose": 2248.7, "change": 21.4, "pChange": 0.95, "totalTradedVolume": 1038514, "totalTradedValue": 2365236405.28, "yearHigh": 2750, "ffmc": 2008866443254.6, "yearLow": 2022.5, "meta": { "symbol": "HINDUNILVR", "companyName": "Hindustan Unilever Limited", "industry": "Diversified FMCG" } }, { "priority": 0, "symbol": "BAJAJ-AUTO", "identifier": "BAJAJ-AUTOEQN", "series": "EQ", "open": 10500, "dayHigh": 10540.5, "dayLow": 10296, "lastPrice": 10375, "previousClose": 10451, "change": -76, "pChange": -0.73, "totalTradedVolume": 227160, "totalTradedValue": 2364413032.8, "yearHigh": 10785, "ffmc": 1146333411015.63, "yearLow": 7858.5, "meta": { "symbol": "BAJAJ-AUTO", "companyName": "Bajaj Auto Limited", "industry": "2/3 Wheelers" } }, { "priority": 0, "symbol": "EICHERMOT", "identifier": "EICHERMOTEQN", "series": "EQ", "open": 7030, "dayHigh": 7115.5, "dayLow": 6975, "lastPrice": 7040, "previousClose": 7034, "change": 6, "pChange": 0.09, "totalTradedVolume": 313548, "totalTradedValue": 2203768982.52, "yearHigh": 8230, "ffmc": 966111276862.96, "yearLow": 5219.5, "meta": { "symbol": "EICHERMOT", "companyName": "Eicher Motors Limited", "industry": "2/3 Wheelers" } }, { "priority": 0, "symbol": "ASIANPAINT", "identifier": "ASIANPAINTEQN", "series": "EQ", "open": 2622.2, "dayHigh": 2640, "dayLow": 2592.8, "lastPrice": 2609, "previousClose": 2622.2, "change": -13.2, "pChange": -0.5, "totalTradedVolume": 796240, "totalTradedValue": 2079691293.6, "yearHigh": 2985.7, "ffmc": 1176342253759.68, "yearLow": 2115, "meta": { "symbol": "ASIANPAINT", "companyName": "Asian Paints Limited", "industry": "Paints" } }, { "priority": 0, "symbol": "HDFCLIFE", "identifier": "HDFCLIFEEQN", "series": "EQ", "open": 616.5, "dayHigh": 618.95, "dayLow": 605.45, "lastPrice": 608.7, "previousClose": 612.55, "change": -3.85, "pChange": -0.63, "totalTradedVolume": 2900528, "totalTradedValue": 1773672872, "yearHigh": 820.75, "ffmc": 652793294991.66, "yearLow": 555.1, "meta": { "symbol": "HDFCLIFE", "companyName": "HDFC Life Insurance Company Limited", "industry": "Life Insurance" } }, { "priority": 0, "symbol": "CIPLA", "identifier": "CIPLAEQN", "series": "EQ", "open": 1436.7, "dayHigh": 1444.5, "dayLow": 1425.2, "lastPrice": 1428.7, "previousClose": 1436.7, "change": -8, "pChange": -0.56, "totalTradedVolume": 1138891, "totalTradedValue": 1634308585, "yearHigh": 1673, "ffmc": 801527516033.55, "yearLow": 1165.7, "meta": { "symbol": "CIPLA", "companyName": "Cipla Limited", "industry": "Pharmaceuticals" } }, { "priority": 0, "symbol": "SBILIFE", "identifier": "SBILIFEEQN", "series": "EQ", "open": 1866.7, "dayHigh": 1883.9, "dayLow": 1850, "lastPrice": 1860, "previousClose": 1866.7, "change": -6.7, "pChange": -0.36, "totalTradedVolume": 851184, "totalTradedValue": 1589713797.6, "yearHigh": 2132, "ffmc": 833099022098.88, "yearLow": 1720, "meta": { "symbol": "SBILIFE", "companyName": "SBI Life Insurance Company Limited", "industry": "Life Insurance" } }, { "priority": 0, "symbol": "MAXHEALTH", "identifier": "MAXHEALTHEQN", "series": "EQ", "open": 1049.55, "dayHigh": 1059.9, "dayLow": 1042.4, "lastPrice": 1049.6, "previousClose": 1049.55, "change": 0.05, "pChange": 0, "totalTradedVolume": 1471140, "totalTradedValue": 1547330340.6, "yearHigh": 1314.3, "ffmc": 778880931295.46, "yearLow": 903, "meta": { "symbol": "MAXHEALTH", "companyName": "Max Healthcare Institute Limited", "industry": "Hospital" } }], "metadata": { "indexName": "NIFTY 50", "open": 23731.4, "high": 23839.3, "low": 23610.3, "previousClose": 23689.6, "last": 23643.5, "percChange": -0.19, "change": -46.099999999998545, "timeVal": "15-May-2026 21:00:30", "yearHigh": 26373.2, "yearLow": 22182.55, "totalTradedVolume": 408857283, "totalTradedValue": 350517109042.12, "ffmc_sum": 1082605305.51 }, "marketStatus": { "market": "Capital Market", "marketStatus": "Closed", "tradeDate": "15-May-2026 15:30", "index": "NIFTY 50", "last": 23643.5, "variation": -46.099999999998545, "percentChange": -0.19, "marketStatusMessage": "Normal Market is Closed" } };
+
+        let barChart = null;
+        let pieChart = null;
+
+        // ===== FORMAT HELPERS =====
+        function fmtNum(n, decimals = 2) {
+            if (n == null || isNaN(n)) return '--';
+            return Number(n).toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+
+        function fmtCr(n) {
+            if (n == null || isNaN(n)) return '--';
+            return (n / 1e7).toFixed(0);
+        }
+
+        function fmtVol(n) {
+            if (n == null || isNaN(n)) return '--';
+            if (n >= 1e7) return (n / 1e7).toFixed(2) + ' Cr';
+            if (n >= 1e5) return (n / 1e5).toFixed(2) + ' L';
+            return n.toLocaleString('en-IN');
+        }
+
+        function clsChange(val) {
+            if (val > 0) return 'pos';
+            if (val < 0) return 'neg';
+            return '';
+        }
+
+        // ===== PROCESS DATA =====
+        function processData(raw) {
+            const stocks = raw.data.filter(d => d.priority === 0 && d.symbol !== 'NIFTY 50');
+            const indexInfo = raw.data.find(d => d.priority === 1) || raw.metadata;
+            const meta = raw.metadata;
+            const market = raw.marketStatus;
+            return { stocks, indexInfo, meta, market, advance: raw.advance, timestamp: raw.timestamp };
+        }
+
+        // ===== RENDER =====
+        function renderAll(data) {
+            const { stocks, indexInfo, meta, market, advance, timestamp } = processData(data);
+
+            // Timestamp
+            document.getElementById('timestamp').textContent = 'Last Updated: ' + (timestamp || meta.timeVal || '--');
+
+            // Market Status
+            const isClosed = market.marketStatus.toLowerCase().includes('closed');
+            const msEl = document.getElementById('marketStatus');
+            const msDot = msEl.querySelector('.status-dot');
+            const msText = document.getElementById('marketStatusText');
+            msEl.className = 'market-status ' + (isClosed ? 'closed' : 'open');
+            msDot.className = 'status-dot ' + (isClosed ? 'closed' : 'open');
+            msText.textContent = market.marketStatusMessage || market.marketStatus;
+
+            // Advances / Declines
+            if (advance) {
+                document.getElementById('advDecl').innerHTML =
+                    `<span class="adv">▲ ${advance.advances} Advances</span>` +
+                    `<span class="dec">▼ ${advance.declines} Declines</span>` +
+                    (advance.unchanged > 0 ? `<span>— ${advance.unchanged} Unchanged</span>` : '');
+            }
+
+            // Index Summary Cards
+            const idx = indexInfo;
+            const idxChange = idx.change || meta.change || 0;
+            const idxPChange = idx.pChange != null ? idx.pChange : meta.percChange;
+            document.getElementById('indexSummary').innerHTML = `
+                <div class="summary-card">
+                    <div class="label">NIFTY 50</div>
+                    <div class="value ${idxChange >= 0 ? 'positive' : 'negative'}">${fmtNum(idx.lastPrice || meta.last)}</div>
+                    <div class="sub ${idxChange >= 0 ? 'positive' : 'negative'}">
+                        ${idxChange >= 0 ? '+' : ''}${fmtNum(idxChange)} (${idxPChange >= 0 ? '+' : ''}${fmtNum(idxPChange)}%)
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Open</div>
+                    <div class="value">${fmtNum(idx.open || meta.open)}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Day High</div>
+                    <div class="value positive">${fmtNum(idx.dayHigh || meta.high)}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Day Low</div>
+                    <div class="value negative">${fmtNum(idx.dayLow || meta.low)}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Prev. Close</div>
+                    <div class="value">${fmtNum(idx.previousClose || meta.previousClose)}</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">52W High / Low</div>
+                    <div class="value" style="font-size:1.1rem;">
+                        <span class="positive">${fmtNum(idx.yearHigh || meta.yearHigh)}</span> /
+                        <span class="negative">${fmtNum(idx.yearLow || meta.yearLow)}</span>
+                    </div>
+                </div>
+            `;
+
+            // Sort stocks by abs pChange for bar chart (top 10)
+            const top10 = [...stocks].sort((a, b) => Math.abs(b.pChange) - Math.abs(a.pChange)).slice(0, 10);
+
+            // Bar Chart
+            renderBarChart(top10);
+
+            // Pie Chart (top 10 by ffmc)
+            const top10FFMC = [...stocks].sort((a, b) => (b.ffmc || 0) - (a.ffmc || 0)).slice(0, 10);
+            renderPieChart(top10FFMC);
+
+            // Table
+            renderTable(stocks);
+        }
+
+        function renderBarChart(top10) {
+            const ctx = document.getElementById('barChart').getContext('2d');
+            if (barChart) barChart.destroy();
+
+            const labels = top10.map(s => s.symbol);
+            const values = top10.map(s => s.pChange);
+            const bgColors = values.map(v => v >= 0 ? 'rgba(63, 185, 80, 0.85)' : 'rgba(248, 81, 73, 0.85)');
+            const borderColors = values.map(v => v >= 0 ? '#3fb950' : '#f85149');
+
+            barChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: '% Change',
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.raw >= 0 ? '+' : ''}${ctx.raw.toFixed(2)}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(48,54,61,0.4)' },
+                            ticks: { color: '#8b949e', callback: v => v + '%' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#c9d1d9', font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderPieChart(top10) {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            if (pieChart) pieChart.destroy();
+
+            const labels = top10.map(s => s.symbol);
+            const values = top10.map(s => s.ffmc || 0);
+            const colors = [
+                '#58a6ff', '#3fb950', '#d2991d', '#f85149', '#bc8cff',
+                '#f778ba', '#79c0ff', '#56d364', '#e3b341', '#db6d28'
+            ];
+
+            pieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#161b22',
+                        borderWidth: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#c9d1d9',
+                                padding: 10,
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                pointStyleWidth: 8,
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const val = ctx.raw;
+                                    return ` ₹${(val / 1e5).toFixed(2)} Lakh Cr`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable(stocks) {
+            const sorted = [...stocks].sort((a, b) => Math.abs(b.pChange) - Math.abs(a.pChange));
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = sorted.map(s => {
+                const chgCls = clsChange(s.change);
+                const company = s.meta ? s.meta.companyName : (s.symbol || '');
+                return `
+                <tr>
+                    <td>${s.symbol}</td>
+                    <td>${company}</td>
+                    <td>${fmtNum(s.lastPrice)}</td>
+                    <td class="${chgCls}">${s.change >= 0 ? '+' : ''}${fmtNum(s.change)}</td>
+                    <td class="${chgCls}">${s.pChange >= 0 ? '+' : ''}${fmtNum(s.pChange)}%</td>
+                    <td>${fmtNum(s.open)}</td>
+                    <td>${fmtNum(s.dayHigh)}</td>
+                    <td>${fmtNum(s.dayLow)}</td>
+                    <td>${fmtVol(s.totalTradedVolume)}</td>
+                    <td>${fmtCr(s.totalTradedValue)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ===== FETCH LIVE DATA =====
+        async function loadData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Loading...';
+
+            try {
+                // Try via allorigins CORS proxy
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const apiUrl = 'https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050';
+
+                const resp = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const json = await resp.json();
+                if (json && json.data && json.data.length > 1) {
+                    renderAll(json);
+                    btn.textContent = '✅ Refreshed';
+                    setTimeout(() => { btn.textContent = '🔄 Refresh Data'; }, 2000);
+                } else {
+                    throw new Error('Invalid response structure');
+                }
+            } catch (e) {
+                console.warn('Live fetch failed, using embedded data:', e.message);
+                // Fallback to embedded data
+                renderAll(EMBEDDED_DATA);
+                btn.textContent = '⚠️ Using Cached Data';
+                setTimeout(() => { btn.textContent = '🔄 Refresh Data'; }, 2500);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ===== INIT =====
+        // Load embedded data immediately
+        renderAll(EMBEDDED_DATA);
+        // Then attempt live fetch
+        loadData();
+        // Auto-refresh every 5 minutes
+        setInterval(loadData, 300000);
+    </script>
+</body>
+
+</html>
