@@ -1343,7 +1343,7 @@
             btn.textContent = '⏳ Loading…';
 
             try {
-                const resp = await fetch('http://localhost:3000/api/nifty50');
+                const resp = await fetch('/api/nifty50');
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const json = await resp.json();
                 if (json && json.data && json.data.length > 1) {
