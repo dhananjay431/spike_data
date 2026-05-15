@@ -585,6 +585,64 @@
             box-shadow: 0 0 0 3px var(--accent-bg);
         }
 
+        /* Column filters */
+        .col-filter-row {
+            background: var(--bg-secondary);
+        }
+
+        .col-filter-row th {
+            padding: 4px 6px;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+            background: var(--bg-secondary);
+            cursor: default;
+            font-weight: 400;
+        }
+
+        .col-filter-row th:first-child,
+        .col-filter-row th:nth-child(2) {
+            text-align: left;
+        }
+
+        .col-filter {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 3px 6px;
+            border-radius: var(--radius-sm);
+            font-size: 0.72rem;
+            font-family: var(--font);
+            width: 100%;
+            transition: all var(--transition);
+        }
+
+        .col-filter:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-bg);
+        }
+
+        .col-filter::placeholder {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+        }
+
+        .clear-filters-btn {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+        }
+
+        .clear-filters-btn:hover {
+            background: var(--card-bg-hover);
+            color: var(--text);
+        }
+
         .table-wrap {
             overflow-x: auto;
             max-height: 520px;
@@ -876,8 +934,12 @@
     <div class="table-card">
         <div class="table-header">
             <h3>📋 Constituent Data</h3>
-            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Filter symbol / name…"
-                oninput="filterTable()">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <input type="text" class="search-input" id="searchInput" placeholder="🔍 Filter symbol / name…"
+                    oninput="filterTable()">
+                <button class="clear-filters-btn" onclick="clearColumnFilters()" title="Clear all filters">✕
+                    Clear</button>
+            </div>
         </div>
         <div class="table-wrap">
             <table>
@@ -901,6 +963,30 @@
                         </th>
                         <th data-sort="ffmc" onclick="sortTable('ffmc')">Mkt Cap (Cr) <span class="sort-arrow"></span>
                         </th>
+                    </tr>
+                    <tr class="col-filter-row">
+                        <th><input type="text" class="col-filter" data-col="symbol" placeholder="Filter..."
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="company" placeholder="Filter..."
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="ltp" placeholder=">1000"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="change" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="pChange" placeholder=">2"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="open" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="high" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="low" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="volume" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="value" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
+                        <th><input type="text" class="col-filter" data-col="ffmc" placeholder="Min-Max"
+                                oninput="applyColumnFilters()"></th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
@@ -1323,15 +1409,64 @@
                     <td>${fmtCr(s.ffmc)}</td>
                 </tr>
             `).join('');
+            applyColumnFilters();
+        }
+
+        function applyColumnFilters() {
+            const rows = document.querySelectorAll('#tableBody tr');
+            const filters = {};
+            document.querySelectorAll('.col-filter').forEach(input => {
+                filters[input.dataset.col] = input.value.trim().toLowerCase();
+            });
+            const globalQ = document.getElementById('searchInput').value.toLowerCase();
+            rows.forEach(row => {
+                let visible = true;
+                const cells = row.querySelectorAll('td');
+                const rowText = row.textContent.toLowerCase();
+                if (globalQ && !rowText.includes(globalQ)) visible = false;
+                if (filters.symbol && !cells[0].textContent.toLowerCase().includes(filters.symbol)) visible = false;
+                if (filters.company && !cells[1].textContent.toLowerCase().includes(filters.company)) visible = false;
+                const numericCols = ['ltp', 'change', 'pChange', 'open', 'high', 'low', 'volume', 'value', 'ffmc'];
+                numericCols.forEach((col, i) => {
+                    if (!filters[col]) return;
+                    const cellText = cells[i + 2].textContent.replace(/[^\d.-]/g, '');
+                    const val = parseFloat(cellText);
+                    const f = filters[col];
+                    if (f.includes('-')) {
+                        const parts = f.split('-');
+                        const min = parseFloat(parts[0].trim());
+                        const max = parseFloat(parts[1].trim());
+                        if (!isNaN(min) && val < min) visible = false;
+                        if (!isNaN(max) && val > max) visible = false;
+                    } else if (f.startsWith('>=')) {
+                        const min = parseFloat(f.slice(2));
+                        if (!isNaN(min) && val < min) visible = false;
+                    } else if (f.startsWith('<=')) {
+                        const max = parseFloat(f.slice(2));
+                        if (!isNaN(max) && val > max) visible = false;
+                    } else if (f.startsWith('>')) {
+                        const min = parseFloat(f.slice(1));
+                        if (!isNaN(min) && val <= min) visible = false;
+                    } else if (f.startsWith('<')) {
+                        const max = parseFloat(f.slice(1));
+                        if (!isNaN(max) && val >= max) visible = false;
+                    } else {
+                        const target = parseFloat(f);
+                        if (!isNaN(target) && Math.abs(val - target) > 0.01) visible = false;
+                    }
+                });
+                row.style.display = visible ? '' : 'none';
+            });
+        }
+
+        function clearColumnFilters() {
+            document.querySelectorAll('.col-filter').forEach(input => input.value = '');
+            document.getElementById('searchInput').value = '';
+            applyColumnFilters();
         }
 
         function filterTable() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            const rows = document.querySelectorAll('#tableBody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(q) ? '' : 'none';
-            });
+            applyColumnFilters();
         }
 
         /* ================================================================

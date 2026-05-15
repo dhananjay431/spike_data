@@ -428,6 +428,168 @@
             transition: left 0.5s ease;
         }
 
+        /* ============ COLUMN FILTERS ============ */
+        .column-filters {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .column-filters input,
+        .column-filters select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 4px 8px;
+            color: var(--text);
+            font-size: 11px;
+            outline: none;
+            transition: var(--transition);
+            min-width: 70px;
+        }
+
+        .column-filters input:focus,
+        .column-filters select:focus {
+            border-color: var(--accent);
+        }
+
+        .column-filters input::placeholder {
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .filter-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        /* ============ MODAL / POPUP ============ */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            width: 95vw;
+            height: 92vh;
+            max-width: 1400px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.8);
+            animation: modalScaleIn 0.25s ease;
+        }
+
+        @keyframes modalScaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.92);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            background: var(--header-bg);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            min-height: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--red-bg);
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .expand-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            width: 26px;
+            height: 26px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            margin-left: 8px;
+        }
+
+        .expand-btn:hover {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
         /* ============ SPIKE FEED ============ */
         .spike-item {
             display: flex;
@@ -814,7 +976,10 @@
         <div class="panel panel-spike" id="panelSpike">
             <div class="panel-header">
                 <span class="panel-title">⚡ Live Spike Feed</span>
-                <span style="font-size:10px;color:var(--text-muted);" id="spikeCount">0 active</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:10px;color:var(--text-muted);" id="spikeCount">0 active</span>
+                    <button class="expand-btn" onclick="openSpikeModal()" title="Open in large view">⛶</button>
+                </div>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;flex-shrink:0;" id="spikeFilters">
                 <button class="btn"
@@ -833,7 +998,125 @@
                 <button class="btn" style="font-size:10px;padding:3px 10px;" onclick="setSpikeFilter('BEARISH')"
                     id="spikeFiltBearish">🔴 BEARISH</button>
             </div>
+            <!-- Column Filters -->
+            <div class="column-filters" id="spikeColumnFilters">
+                <div class="filter-group">
+                    <span class="filter-label">Symbol</span>
+                    <input type="text" placeholder="e.g. REL" oninput="setColumnFilter('symbol', this.value)"
+                        id="colFiltSymbol">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Price</span>
+                    <input type="number" placeholder="0" oninput="setColumnFilter('minPrice', this.value)"
+                        id="colFiltMinPrice">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Max Price</span>
+                    <input type="number" placeholder="∞" oninput="setColumnFilter('maxPrice', this.value)"
+                        id="colFiltMaxPrice">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Chg%</span>
+                    <input type="number" placeholder="-100" step="0.1" oninput="setColumnFilter('minChg', this.value)"
+                        id="colFiltMinChg">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Max Chg%</span>
+                    <input type="number" placeholder="100" step="0.1" oninput="setColumnFilter('maxChg', this.value)"
+                        id="colFiltMaxChg">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Min Vol</span>
+                    <input type="number" placeholder="0" oninput="setColumnFilter('minVol', this.value)"
+                        id="colFiltMinVol">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Tag</span>
+                    <select onchange="setColumnFilter('tag', this.value)" id="colFiltTag">
+                        <option value="">All Tags</option>
+                        <option value="SPIKE">SPIKE</option>
+                        <option value="VOLUME">VOLUME</option>
+                        <option value="BREAKOUT">BREAKOUT</option>
+                        <option value="REVERSAL">REVERSAL</option>
+                        <option value="GAP">GAP</option>
+                    </select>
+                </div>
+            </div>
             <div class="panel-body" id="spikeFeed"></div>
+        </div>
+
+        <!-- ============ SPIKE FEED MODAL ============ -->
+        <div class="modal-overlay" id="spikeModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-title">⚡ Live Spike Feed — Full View</span>
+                    <button class="modal-close" onclick="closeSpikeModal()">✕</button>
+                </div>
+                <div style="padding:12px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0;">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="modalSpikeFilters">
+                        <button class="btn"
+                            style="font-size:10px;padding:3px 10px;border-color:var(--green);color:var(--green);"
+                            onclick="setModalSpikeFilter('all')" id="modalSpikeFiltAll">📋 ALL</button>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;"
+                            onclick="setModalSpikeFilter('SPIKE')" id="modalSpikeFiltSpike">⚡ SPIKE</button>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;"
+                            onclick="setModalSpikeFilter('VOLUME')" id="modalSpikeFiltVolume">📊 VOLUME</button>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;"
+                            onclick="setModalSpikeFilter('BREAKOUT')" id="modalSpikeFiltBreakout">🚀 BREAKOUT</button>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;"
+                            onclick="setModalSpikeFilter('REVERSAL')" id="modalSpikeFiltReversal">🔄 REVERSAL</button>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;"
+                            onclick="setModalSpikeFilter('BULLISH')" id="modalSpikeFiltBullish">🟢 BULLISH</button>
+                        <button class="btn" style="font-size:10px;padding:3px 10px;"
+                            onclick="setModalSpikeFilter('BEARISH')" id="modalSpikeFiltBearish">🔴 BEARISH</button>
+                    </div>
+                    <!-- Modal Column Filters -->
+                    <div class="column-filters" id="modalColumnFilters">
+                        <div class="filter-group">
+                            <span class="filter-label">Symbol</span>
+                            <input type="text" placeholder="e.g. REL"
+                                oninput="setModalColumnFilter('symbol', this.value)" id="modalColFiltSymbol">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Min Price</span>
+                            <input type="number" placeholder="0" oninput="setModalColumnFilter('minPrice', this.value)"
+                                id="modalColFiltMinPrice">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Max Price</span>
+                            <input type="number" placeholder="∞" oninput="setModalColumnFilter('maxPrice', this.value)"
+                                id="modalColFiltMaxPrice">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Min Chg%</span>
+                            <input type="number" placeholder="-100" step="0.1"
+                                oninput="setModalColumnFilter('minChg', this.value)" id="modalColFiltMinChg">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Max Chg%</span>
+                            <input type="number" placeholder="100" step="0.1"
+                                oninput="setModalColumnFilter('maxChg', this.value)" id="modalColFiltMaxChg">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Min Vol</span>
+                            <input type="number" placeholder="0" oninput="setModalColumnFilter('minVol', this.value)"
+                                id="modalColFiltMinVol">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Tag</span>
+                            <select onchange="setModalColumnFilter('tag', this.value)" id="modalColFiltTag">
+                                <option value="">All Tags</option>
+                                <option value="SPIKE">SPIKE</option>
+                                <option value="VOLUME">VOLUME</option>
+                                <option value="BREAKOUT">BREAKOUT</option>
+                                <option value="REVERSAL">REVERSAL</option>
+                                <option value="GAP">GAP</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body" id="modalSpikeFeed"></div>
+            </div>
         </div>
 
         <!-- C. SECTOR MONITORING -->
@@ -923,7 +1206,7 @@
             // CONFIGURATION
             // ============================================================
             const API_URL = '/api/nifty50';
-            const REFRESH_INTERVAL = 3 * 1000; // 3 seconds
+            const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
             const SPIKE_THRESHOLD_PCHANGE = 2.0;
             const VOLUME_MULTIPLIER = 2.0;
             const NEAR_DAYHIGH_THRESHOLD = 0.5;
@@ -945,6 +1228,18 @@
 
             // Search filter stream
             const searchQuery$ = new BehaviorSubject('');
+
+            // Column filters for spike feed
+            const columnFilter$ = new BehaviorSubject({});
+            const modalSpikeFilter$ = new BehaviorSubject('all');
+            const modalColumnFilter$ = new BehaviorSubject({});
+
+            // Data cache for re-rendering on filter changes
+            let cacheSpikes = [];
+            let cacheStocks = [];
+            let cacheSectors = [];
+            let cacheAlertHist = [];
+            let isModalOpen = false;
 
             // ============================================================
             // AUDIO ENGINE
@@ -1147,19 +1442,65 @@
                 document.getElementById('marketTime').textContent = 'Last: ' + new Date().toLocaleTimeString('en-IN');
             }
 
-            function renderSpikeFeed(spikes, filt) {
+            function renderSpikeFeed(spikes, filt, colFilt) {
                 const feed = document.getElementById('spikeFeed');
-                let filtered = spikes;
-                if (filt !== 'all') filtered = spikes.filter(s => {
-                    switch (filt) { case 'SPIKE': return s.reasons.some(r => r.type.includes('SPIKE')); case 'VOLUME': return s.reasons.some(r => r.type.includes('VOLUME')); case 'BREAKOUT': return s.reasons.some(r => r.type.includes('HIGH') || r.type.includes('VALUE')); case 'REVERSAL': return s.reasons.some(r => r.type.includes('REVERSAL')); case 'GAP': return s.reasons.some(r => r.type.includes('GAP')); case 'BULLISH': return s.isBullish; case 'BEARISH': return !s.isBullish; default: return true; }
-                });
+                let filtered = applySpikeCategoryFilter(spikes, filt);
+                filtered = applyColumnFilters(filtered, colFilt);
                 document.getElementById('spikeCount').textContent = filtered.length + ' of ' + spikes.length + ' | Filter: ' + filt.toUpperCase();
                 if (filtered.length === 0) { feed.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px;">No spikes match the filter — try a different filter</div>'; return; }
-                feed.innerHTML = filtered.slice(0, 15).map(s => {
-                    const m = s.reasons[0]; const dc = s.isBullish ? 'bullish' : 'bearish';
-                    const tags = s.reasons.map(r => { if (r.type.includes('SPIKE')) return '<span class="spike-tag spike">SPIKE</span>'; if (r.type.includes('VOLUME')) return '<span class="spike-tag volume">VOL</span>'; if (r.type.includes('HIGH') || r.type.includes('VALUE')) return '<span class="spike-tag breakout">BREAK</span>'; if (r.type.includes('REVERSAL')) return '<span class="spike-tag reversal">REV</span>'; if (r.type.includes('GAP')) return '<span class="spike-tag reversal">GAP</span>'; return ''; }).join(' ');
-                    return '<div class="spike-item ' + dc + '"><span class="spike-sym" style="color:' + (s.isBullish ? 'var(--green)' : 'var(--red)') + '">' + (s.isBullish ? '▲' : '▼') + ' ' + s.symbol + '</span><span class="spike-price">₹' + s.lastPrice.toFixed(2) + '</span><span class="spike-change" style="color:' + (s.isBullish ? 'var(--green)' : 'var(--red)') + '">' + (s.pChange >= 0 ? '+' : '') + s.pChange.toFixed(2) + '%</span><span style="font-size:10px;color:var(--text-muted);">V:' + fmtVol(s.totalTradedVolume) + '</span>' + tags + '<span style="font-size:9px;color:var(--text-muted);flex:1;text-align:right;">' + m.msg + '</span></div>';
-                }).join('');
+                feed.innerHTML = filtered.slice(0, 15).map(s => buildSpikeItemHTML(s)).join('');
+            }
+
+            function renderModalSpikeFeed(spikes, filt, colFilt) {
+                const feed = document.getElementById('modalSpikeFeed');
+                let filtered = applySpikeCategoryFilter(spikes, filt);
+                filtered = applyColumnFilters(filtered, colFilt);
+                if (filtered.length === 0) { feed.innerHTML = '<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:40px;">No spikes match the filters — try adjusting your criteria</div>'; return; }
+                feed.innerHTML = filtered.map(s => buildSpikeItemHTML(s)).join('');
+            }
+
+            function applySpikeCategoryFilter(spikes, filt) {
+                if (filt === 'all') return spikes;
+                return spikes.filter(s => {
+                    switch (filt) {
+                        case 'SPIKE': return s.reasons.some(r => r.type.includes('SPIKE'));
+                        case 'VOLUME': return s.reasons.some(r => r.type.includes('VOLUME'));
+                        case 'BREAKOUT': return s.reasons.some(r => r.type.includes('HIGH') || r.type.includes('VALUE'));
+                        case 'REVERSAL': return s.reasons.some(r => r.type.includes('REVERSAL'));
+                        case 'GAP': return s.reasons.some(r => r.type.includes('GAP'));
+                        case 'BULLISH': return s.isBullish;
+                        case 'BEARISH': return !s.isBullish;
+                        default: return true;
+                    }
+                });
+            }
+
+            function applyColumnFilters(spikes, cf) {
+                if (!cf || Object.keys(cf).length === 0) return spikes;
+                return spikes.filter(s => {
+                    if (cf.symbol && !s.symbol.toUpperCase().includes(cf.symbol.toUpperCase())) return false;
+                    if (cf.minPrice !== '' && cf.minPrice !== undefined && s.lastPrice < parseFloat(cf.minPrice)) return false;
+                    if (cf.maxPrice !== '' && cf.maxPrice !== undefined && s.lastPrice > parseFloat(cf.maxPrice)) return false;
+                    if (cf.minChg !== '' && cf.minChg !== undefined && s.pChange < parseFloat(cf.minChg)) return false;
+                    if (cf.maxChg !== '' && cf.maxChg !== undefined && s.pChange > parseFloat(cf.maxChg)) return false;
+                    if (cf.minVol !== '' && cf.minVol !== undefined && s.totalTradedVolume < parseFloat(cf.minVol)) return false;
+                    if (cf.tag && !s.reasons.some(r => r.type.includes(cf.tag))) return false;
+                    return true;
+                });
+            }
+
+            function buildSpikeItemHTML(s) {
+                const m = s.reasons[0];
+                const dc = s.isBullish ? 'bullish' : 'bearish';
+                const tags = s.reasons.map(r => {
+                    if (r.type.includes('SPIKE')) return '<span class="spike-tag spike">SPIKE</span>';
+                    if (r.type.includes('VOLUME')) return '<span class="spike-tag volume">VOL</span>';
+                    if (r.type.includes('HIGH') || r.type.includes('VALUE')) return '<span class="spike-tag breakout">BREAK</span>';
+                    if (r.type.includes('REVERSAL')) return '<span class="spike-tag reversal">REV</span>';
+                    if (r.type.includes('GAP')) return '<span class="spike-tag reversal">GAP</span>';
+                    return '';
+                }).join(' ');
+                return '<div class="spike-item ' + dc + '"><span class="spike-sym" style="color:' + (s.isBullish ? 'var(--green)' : 'var(--red)') + '">' + (s.isBullish ? '▲' : '▼') + ' ' + s.symbol + '</span><span class="spike-price">₹' + s.lastPrice.toFixed(2) + '</span><span class="spike-change" style="color:' + (s.isBullish ? 'var(--green)' : 'var(--red)') + '">' + (s.pChange >= 0 ? '+' : '') + s.pChange.toFixed(2) + '%</span><span style="font-size:10px;color:var(--text-muted);">V:' + fmtVol(s.totalTradedVolume) + '</span>' + tags + '<span style="font-size:9px;color:var(--text-muted);flex:1;text-align:right;">' + m.msg + '</span></div>';
             }
 
             function renderSectors(sectors, filt) {
@@ -1242,10 +1583,16 @@
             // ============================================================
             // COMBINE ALL STREAMS FOR RENDERING
             // ============================================================
-            const render$ = combineLatest([spikes$, sectors$, alertHistory$, updateCountAcc$, spikeFilter$, heatmapMode$, sectorFilter$]).pipe(
-                tap(([{ spikes, stocks, hist }, sectors, alertHist, count, spikeFilt, hmMode, secFilt]) => {
+            const render$ = combineLatest([spikes$, sectors$, alertHistory$, updateCountAcc$, spikeFilter$, heatmapMode$, sectorFilter$, columnFilter$, modalSpikeFilter$, modalColumnFilter$]).pipe(
+                tap(([{ spikes, stocks, hist }, sectors, alertHist, count, spikeFilt, hmMode, secFilt, colFilt, modalSpikeFilt, modalColFilt]) => {
+                    // Cache data for modal re-renders
+                    cacheSpikes = spikes;
+                    cacheStocks = stocks;
+                    cacheSectors = sectors;
+                    cacheAlertHist = alertHist;
+
                     renderOverview(stocks, sectors, spikes.length);
-                    renderSpikeFeed(spikes, spikeFilt);
+                    renderSpikeFeed(spikes, spikeFilt, colFilt);
                     renderSectors(sectors, secFilt);
                     if (hmMode === 'gap') {
                         document.getElementById('heatmapGrid').style.display = 'none';
@@ -1261,6 +1608,9 @@
                     renderMomentum(stocks, hist);
                     renderAlerts(spikes, alertHist);
                     renderTicker(stocks);
+                    if (isModalOpen) {
+                        renderModalSpikeFeed(spikes, modalSpikeFilt, modalColFilt);
+                    }
                     document.getElementById('updateCount').textContent = 'Updates: ' + count;
                     document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-IN');
                     document.getElementById('statusText').textContent = autoRefresh$.value ? 'Live' : 'Paused';
@@ -1385,6 +1735,67 @@
                     if (f.length === 1) showToast('🔍 ' + f[0].symbol + ': ₹' + f[0].lastPrice.toFixed(2) + ' | ' + f[0].pChange.toFixed(2) + '% | ' + f[0].companyName, f[0].pChange >= 0 ? 'bullish' : 'bearish');
                 });
             };
+
+            // ============================================================
+            // MODAL & COLUMN FILTER CONTROLS
+            // ============================================================
+            window.openSpikeModal = function () {
+                isModalOpen = true;
+                const modal = document.getElementById('spikeModal');
+                modal.classList.add('active');
+                // Sync filters from panel to modal
+                const cf = columnFilter$.value;
+                document.getElementById('modalColFiltSymbol').value = cf.symbol || '';
+                document.getElementById('modalColFiltMinPrice').value = cf.minPrice || '';
+                document.getElementById('modalColFiltMaxPrice').value = cf.maxPrice || '';
+                document.getElementById('modalColFiltMinChg').value = cf.minChg || '';
+                document.getElementById('modalColFiltMaxChg').value = cf.maxChg || '';
+                document.getElementById('modalColFiltMinVol').value = cf.minVol || '';
+                document.getElementById('modalColFiltTag').value = cf.tag || '';
+                modalSpikeFilter$.next(spikeFilter$.value);
+                setModalSpikeFilter(spikeFilter$.value);
+                modalColumnFilter$.next({ ...cf });
+                renderModalSpikeFeed(cacheSpikes, spikeFilter$.value, cf);
+            };
+
+            window.closeSpikeModal = function () {
+                isModalOpen = false;
+                document.getElementById('spikeModal').classList.remove('active');
+            };
+
+            window.setColumnFilter = function (key, value) {
+                const cf = { ...columnFilter$.value, [key]: value };
+                columnFilter$.next(cf);
+            };
+
+            window.setModalSpikeFilter = function (f) {
+                modalSpikeFilter$.next(f);
+                const allBtns = ['modalSpikeFiltAll', 'modalSpikeFiltSpike', 'modalSpikeFiltVolume', 'modalSpikeFiltBreakout', 'modalSpikeFiltReversal', 'modalSpikeFiltBullish', 'modalSpikeFiltBearish'];
+                allBtns.forEach(id => {
+                    const b = document.getElementById(id); if (!b) return;
+                    b.style.background = 'var(--card-bg)';
+                    b.style.color = 'var(--text)';
+                    b.style.borderColor = 'var(--border)';
+                });
+                const ab = document.getElementById('modalSpikeFilt' + f.charAt(0).toUpperCase() + f.slice(1)); if (ab) {
+                    ab.style.background = 'var(--accent)';
+                    ab.style.color = '#fff';
+                    ab.style.borderColor = 'var(--accent)';
+                }
+            };
+
+            window.setModalColumnFilter = function (key, value) {
+                const cf = { ...modalColumnFilter$.value, [key]: value };
+                modalColumnFilter$.next(cf);
+            };
+
+            // Close modal on Escape key and backdrop click
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeSpikeModal();
+            });
+            document.getElementById('spikeModal').addEventListener('click', function (e) {
+                if (e.target === this) closeSpikeModal();
+            });
 
             // ============================================================
             // INIT

@@ -4,8 +4,9 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = 3000;
+// const NSE_API_URL ="https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050";
 const NSE_API_URL =
-  "https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050";
+  "https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%20TOTAL%20MARKET";
 
 // Store session cookies from NSE
 let nseCookies = "";
@@ -118,6 +119,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Route: /api/nifty50
+
   if (req.url === "/api/nifty50") {
     try {
       // Refresh cookies if empty or stale
