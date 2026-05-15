@@ -180,6 +180,18 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.url === "/index3.html") {
+    const filePath = path.join(__dirname, "index3.html");
+    if (fs.existsSync(filePath)) {
+      res.writeHead(200, {"Content-Type": "text/html"});
+      res.end(fs.readFileSync(filePath));
+    } else {
+      res.writeHead(404, {"Content-Type": "text/plain"});
+      res.end("index3.html not found");
+    }
+    return;
+  }
+
   res.writeHead(404, {"Content-Type": "text/plain"});
   res.end("Not Found. Use /api/nifty50");
 });
@@ -203,6 +215,9 @@ server.listen(PORT, async () => {
   console.log(`API endpoint: http://localhost:${PORT}/api/nifty50`);
   console.log(`Dashboard v1: http://localhost:${PORT}/`);
   console.log(`Dashboard v2: http://localhost:${PORT}/index2.html`);
+  console.log(
+    `Dashboard v3 (5-min compare): http://localhost:${PORT}/index3.html`,
+  );
   console.log("Fetching initial NSE session cookies...");
   try {
     await getNSECookies();

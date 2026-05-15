@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSE NIFTY 50 — 5-Min Comparison & IndexedDB</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rxjs@7.8.1/dist/bundles/rxjs.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+    <style>
+        :root {
+            --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            --bg: #0a0d12;
+            --bg-secondary: #0f1319;
+            --card-bg: #151a23;
+            --border: #242b38;
+            --text: #d8dde6;
+            --text-secondary: #8893a7;
+            --text-muted: #5c6678;
+            --green: #00d46a;
+            --green-bg: rgba(0, 212, 106, 0.10);
+            --red: #ff3b55;
+            --red-bg: rgba(255, 59, 85, 0.10);
+            --accent: #4d8af0;
+            --accent-bg: rgba(77, 138, 240, 0.12);
+            --gold: #f5b01e;
+            --radius: 8px;
+            --transition: 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .status {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 6px 14px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn:hover {
+            background: #1b2230;
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn-accent:hover {
+            opacity: 0.85;
+        }
+
+        .btn-green {
+            background: var(--green);
+            border-color: var(--green);
+            color: #000;
+        }
+
+        .btn-red {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .controls select,
+        .controls input {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 5px 10px;
+            color: var(--text);
+            font-size: 12px;
+            outline: none;
+        }
+
+        .controls select:focus,
+        .controls input:focus {
+            border-color: var(--accent);
+        }
+
+        .controls label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .snapshot-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 4px 12px;
+            border-radius: var(--radius);
+        }
+
+        .table-wrap {
+            flex: 1;
+            overflow: auto;
+            padding: 10px 20px;
+            min-height: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 10px;
+            border-bottom: 2px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        thead th:hover {
+            color: var(--text);
+        }
+
+        thead th .sort-arrow {
+            font-size: 9px;
+            margin-left: 4px;
+            color: var(--gold);
+        }
+
+        tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            white-space: nowrap;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr.up td {
+            background: var(--green-bg);
+        }
+
+        tbody tr.down td {
+            background: var(--red-bg);
+        }
+
+        tbody tr td.col-symbol {
+            font-weight: 700;
+        }
+
+        tbody tr td.col-change {
+            font-weight: 700;
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        .badge-up {
+            background: var(--green);
+            color: #000;
+        }
+
+        .badge-down {
+            background: var(--red);
+            color: #fff;
+        }
+
+        .badge-same {
+            background: var(--text-muted);
+            color: var(--text);
+        }
+
+        .col-filter-row {
+            display: flex;
+            gap: 6px;
+            padding: 6px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .col-filter-row input,
+        .col-filter-row select {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 4px 8px;
+            color: var(--text);
+            font-size: 11px;
+            min-width: 80px;
+            outline: none;
+        }
+
+        .col-filter-row input:focus,
+        .col-filter-row select:focus {
+            border-color: var(--accent);
+        }
+
+        .col-filter-row input::placeholder {
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .chart-section {
+            padding: 10px 20px;
+            flex-shrink: 0;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+        }
+
+        .chart-card h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .chart-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: var(--radius);
+            padding: 2px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: var(--transition);
+            margin-left: 10px;
+        }
+
+        .chart-toggle:hover {
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        .chart-card.collapsed .chart-wrap {
+            display: none;
+        }
+
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 260px;
+        }
+
+        .chart-wrap canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div>
+            <span class="logo">📊 NSE 5-Min Compare</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:12px;">Auto-captures every 5 minutes &
+                stores in IndexedDB</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span class="status" id="statusText">Ready</span>
+            <span class="snapshot-info" id="snapshotCount">Snapshots: 0</span>
+            <button class="btn btn-accent" id="refreshBtn">🔄 Refresh Now</button>
+            <button class="btn btn-green" id="saveBtn">💾 Save Snapshot</button>
+            <button class="btn btn-red" id="clearBtn">🗑 Clear DB</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label>Compare with:</label>
+        <select id="compareSelect">
+            <option value="">-- Select snapshot --</option>
+        </select>
+        <button class="btn" id="csvBtn">📥 Export CSV</button>
+        <button class="btn" id="jsonBtn">📥 Export JSON</button>
+        <span style="color:var(--text-muted);font-size:11px;margin-left:8px;">Sort by clicking column headers</span>
+    </div>
+
+    <div class="col-filter-row" id="columnFilters">
+        <!-- Generated by JS -->
+    </div>
+
+    <div class="chart-section">
+        <div class="chart-card" id="industryChartCard">
+            <h3 id="chartHeader">
+                <span>🏭 Industry-Wise Average % Change</span>
+                <span class="chart-toggle" id="chartToggleBtn">−</span>
+            </h3>
+            <div class="chart-wrap">
+                <canvas id="industryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th data-sort="symbol">Symbol <span class="sort-arrow" id="sort-symbol"></span></th>
+                    <th data-sort="lastPrice">Price <span class="sort-arrow" id="sort-lastPrice"></span></th>
+                    <th data-sort="open">Open <span class="sort-arrow" id="sort-open"></span></th>
+                    <th data-sort="change">Change <span class="sort-arrow" id="sort-change"></span></th>
+                    <th data-sort="pChange">Chg% <span class="sort-arrow" id="sort-pChange"></span></th>
+                    <th data-sort="previousClose">Prev Close <span class="sort-arrow" id="sort-previousClose"></span>
+                    </th>
+                    <th data-sort="dayHigh">Day High <span class="sort-arrow" id="sort-dayHigh"></span></th>
+                    <th data-sort="dayLow">Day Low <span class="sort-arrow" id="sort-dayLow"></span></th>
+                    <th data-sort="totalTradedVolume">Volume <span class="sort-arrow"
+                            id="sort-totalTradedVolume"></span></th>
+                    <th data-sort="totalTradedValue">Value <span class="sort-arrow" id="sort-totalTradedValue"></span>
+                    </th>
+                    <th data-sort="yearHigh">52W High <span class="sort-arrow" id="sort-yearHigh"></span></th>
+                    <th data-sort="yearLow">52W Low <span class="sort-arrow" id="sort-yearLow"></span></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="12" style="text-align:center;color:var(--text-muted);padding:40px;">Press "Refresh Now"
+                        to fetch data</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            // ==================== RxJS Destructure ====================
+            const {
+                Observable,
+                Subject,
+                BehaviorSubject,
+                from: rxFrom,
+                fromEvent,
+                interval,
+                of,
+                combineLatest,
+                merge,
+                EMPTY
+            } = rxjs;
+
+            const {
+                map,
+                filter,
+                switchMap,
+                debounceTime,
+                distinctUntilChanged,
+                catchError,
+                tap,
+                shareReplay,
+                startWith,
+                take,
+                withLatestFrom
+            } = rxjs.operators;
+
+            // ==================== Lodash Aliases ====================
+            const { get, keyBy, orderBy, groupBy, round, defaultTo, isEmpty, chain, pick, escape, template, debounce: _debounce } = _;
+
+            // ==================== DOM References ====================
+            const $ = (id) => document.getElementById(id);
+            const statusText = $('statusText');
+            const snapshotCount = $('snapshotCount');
+            const tableBody = $('tableBody');
+            const compareSelect = $('compareSelect');
+            const toastContainer = $('toastContainer');
+            const chartCanvas = $('industryChart');
+
+            // ==================== IndexedDB as Observable ====================
+            const DB_NAME = 'NseDataDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'snapshots';
+
+            const db$ = new Observable(subscriber => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onerror = () => subscriber.error(req.error);
+                req.onsuccess = () => {
+                    subscriber.next(req.result);
+                    subscriber.complete();
+                };
+                req.onupgradeneeded = (e) => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains(STORE_NAME)) {
+                        const store = d.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                };
+            }).pipe(shareReplay(1));
+
+            function idbTransaction(mode, storeCallback) {
+                return db$.pipe(
+                    switchMap(db => {
+                        return new Observable(subscriber => {
+                            const tx = db.transaction([STORE_NAME], mode);
+                            const store = tx.objectStore(STORE_NAME);
+                            try {
+                                storeCallback(store, subscriber, tx);
+                            } catch (e) {
+                                subscriber.error(e);
+                            }
+                            tx.oncomplete = () => subscriber.complete();
+                            tx.onerror = () => subscriber.error(tx.error);
+                        });
+                    })
+                );
+            }
+
+            function saveSnapshot(stocks) {
+                return idbTransaction('readwrite', (store, subscriber) => {
+                    const snapshot = {
+                        timestamp: Date.now(),
+                        stocks: stocks,
+                        label: new Date().toLocaleString('en-IN')
+                    };
+                    const req = store.add(snapshot);
+                    req.onsuccess = () => subscriber.next(req.result);
+                });
+            }
+
+            function loadAllSnapshots() {
+                return idbTransaction('readonly', (store, subscriber) => {
+                    const req = store.getAll();
+                    req.onsuccess = () => subscriber.next(req.result);
+                });
+            }
+
+            function clearAllSnapshots() {
+                return idbTransaction('readwrite', (store, subscriber) => {
+                    const req = store.clear();
+                    req.onsuccess = () => subscriber.next(undefined);
+                });
+            }
+
+            // ==================== API Fetch as Observable ====================
+            function fetchStocks() {
+                return rxFrom(fetch('/api/nifty50')).pipe(
+                    switchMap(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return rxFrom(res.json());
+                    }),
+                    map(json => {
+                        const arr = json && json.data ? json.data : Array.isArray(json) ? json : [];
+                        return arr.map(s => ({
+                            symbol: defaultTo(s.symbol, ''),
+                            open: parseFloat(defaultTo(s.open, 0)),
+                            dayHigh: parseFloat(defaultTo(s.dayHigh, 0)),
+                            dayLow: parseFloat(defaultTo(s.dayLow, 0)),
+                            lastPrice: parseFloat(defaultTo(s.lastPrice, 0)),
+                            previousClose: parseFloat(defaultTo(s.previousClose, 0)),
+                            change: parseFloat(defaultTo(s.change, 0)),
+                            pChange: parseFloat(defaultTo(s.pChange, 0)),
+                            totalTradedVolume: parseFloat(defaultTo(s.totalTradedVolume, 0)),
+                            totalTradedValue: parseFloat(defaultTo(s.totalTradedValue, 0)),
+                            yearHigh: parseFloat(defaultTo(s.yearHigh, 0)),
+                            yearLow: parseFloat(defaultTo(s.yearLow, 0)),
+                            industry: get(s, 'meta.industry', 'Other'),
+                        })).filter(s => s.symbol && s.lastPrice > 0);
+                    }),
+                    catchError(err => {
+                        showToast('❌ Fetch failed: ' + err.message, true);
+                        statusText.textContent = 'Error: ' + err.message;
+                        return EMPTY;
+                    })
+                );
+            }
+
+            // ==================== State Streams ====================
+            const currentData$ = new BehaviorSubject([]);
+            const previousData$ = new BehaviorSubject([]);
+            const sortCol$ = new BehaviorSubject('symbol');
+            const sortDir$ = new BehaviorSubject('asc');
+            const colFilters$ = new BehaviorSubject({});
+            const fetchTrigger$ = new Subject();
+            const saveTrigger$ = new Subject();
+            const clearTrigger$ = new Subject();
+            const selectedSnapshotId$ = new BehaviorSubject('');
+
+            // ==================== Comparison Logic (pure) ====================
+            function compareWithPrevious(current, previous) {
+                if (isEmpty(previous)) {
+                    return current.map(c => ({
+                        ...c,
+                        comparePrice: c.lastPrice,
+                        comparePChange: c.pChange,
+                        trend: 'same'
+                    }));
+                }
+                const prevMap = keyBy(previous, 'symbol');
+                return current.map(c => {
+                    const p = prevMap[c.symbol];
+                    if (!p) return { ...c, comparePrice: c.lastPrice, comparePChange: c.pChange, trend: 'same' };
+                    const diff = c.lastPrice - p.lastPrice;
+                    const pct = p.lastPrice > 0 ? (diff / p.lastPrice) * 100 : 0;
+                    const trend = diff > 0.001 ? 'up' : diff < -0.001 ? 'down' : 'same';
+                    return { ...c, comparePrice: p.lastPrice, comparePChange: pct, trend };
+                });
+            }
+
+            // ==================== Formatters (pure) ====================
+            const fmt = (n, d = 2) => (n !== undefined && n !== null) ? Number(n).toFixed(d) : '-';
+
+            const fmtVol = (v) => {
+                if (!v || v === 0) return '0';
+                return chain(v)
+                    .thru(val => {
+                        if (val >= 1e7) return round(val / 1e7, 2) + 'Cr';
+                        if (val >= 1e5) return round(val / 1e5, 2) + 'L';
+                        if (val >= 1e3) return round(val / 1e3, 1) + 'K';
+                        return String(val);
+                    })
+                    .value();
+            };
+
+            // ==================== Derived Streams ====================
+
+            const comparedData$ = combineLatest([currentData$, previousData$]).pipe(
+                map(([current, previous]) => compareWithPrevious(current, previous)),
+                shareReplay(1)
+            );
+
+            // Filtered data using Lodash
+            const filteredData$ = combineLatest([comparedData$, colFilters$]).pipe(
+                map(([data, filters]) => {
+                    if (isEmpty(filters)) return data;
+                    return data.filter(r => {
+                        return chain(filters)
+                            .toPairs()
+                            .every(([key, val]) => {
+                                if (isEmpty(val)) return true;
+                                switch (key) {
+                                    case 'symbol':
+                                        return r.symbol.toUpperCase().includes(val.toUpperCase());
+                                    case 'lastPrice':
+                                        return r.lastPrice >= parseFloat(val);
+                                    case 'maxPrice':
+                                        return r.lastPrice <= parseFloat(val);
+                                    case 'minChange':
+                                        return r.change >= parseFloat(val);
+                                    case 'maxChange':
+                                        return r.change <= parseFloat(val);
+                                    case 'minPChange':
+                                        return r.pChange >= parseFloat(val);
+                                    case 'maxPChange':
+                                        return r.pChange <= parseFloat(val);
+                                    case 'trend':
+                                        return r.trend === val;
+                                    default:
+                                        return true;
+                                }
+                            })
+                            .value();
+                    });
+                }),
+                shareReplay(1)
+            );
+
+            // Sorted data using Lodash _.orderBy
+            const sortedData$ = combineLatest([filteredData$, sortCol$, sortDir$]).pipe(
+                map(([data, col, dir]) => orderBy(data, [col], [dir])),
+                shareReplay(1)
+            );
+
+            // ==================== Render Table Subscription ====================
+            const rowTemplate = template(
+                '<tr class="<%= rowClass %>">' +
+                '<td class="col-symbol"><%= symbol %> <span class="badge badge-<%= trend %>"><%= trendLabel %></span></td>' +
+                '<td><%= lastPrice %></td>' +
+                '<td><%= open %></td>' +
+                '<td class="col-change" style="color:<%= changeColor %>"><%= changeSign %><%= change %></td>' +
+                '<td class="col-change" style="color:<%= pChangeColor %>"><%= pChangeSign %><%= pChange %>%</td>' +
+                '<td><%= previousClose %></td>' +
+                '<td><%= dayHigh %></td>' +
+                '<td><%= dayLow %></td>' +
+                '<td><%= totalTradedVolume %></td>' +
+                '<td>₹<%= totalTradedValue %></td>' +
+                '<td><%= yearHigh %></td>' +
+                '<td><%= yearLow %></td>' +
+                '</tr>'
+            );
+
+            sortedData$.subscribe(data => {
+                if (isEmpty(data)) {
+                    tableBody.innerHTML =
+                        '<tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:40px;">No data matches filters</td></tr>';
+                    return;
+                }
+                tableBody.innerHTML = data.map(r => {
+                    const trend = r.trend;
+                    const rowClass = trend === 'up' ? 'up' : trend === 'down' ? 'down' : '';
+                    const trendLabel = trend === 'up' ? 'UP' : trend === 'down' ? 'DOWN' : 'SAME';
+                    return rowTemplate({
+                        rowClass,
+                        symbol: escape(r.symbol),
+                        trend,
+                        trendLabel,
+                        lastPrice: fmt(r.lastPrice),
+                        open: fmt(r.open),
+                        changeColor: r.change >= 0 ? 'var(--green)' : 'var(--red)',
+                        changeSign: r.change >= 0 ? '+' : '',
+                        change: fmt(r.change),
+                        pChangeColor: r.pChange >= 0 ? 'var(--green)' : 'var(--red)',
+                        pChangeSign: r.pChange >= 0 ? '+' : '',
+                        pChange: fmt(r.pChange),
+                        previousClose: fmt(r.previousClose),
+                        dayHigh: fmt(r.dayHigh),
+                        dayLow: fmt(r.dayLow),
+                        totalTradedVolume: fmtVol(r.totalTradedVolume),
+                        totalTradedValue: fmtVol(r.totalTradedValue),
+                        yearHigh: fmt(r.yearHigh),
+                        yearLow: fmt(r.yearLow),
+                    });
+                }).join('');
+            });
+
+            // ==================== Fetch Pipeline ====================
+            fetchTrigger$.pipe(
+                tap(() => { statusText.textContent = 'Fetching...'; }),
+                switchMap(() => fetchStocks().pipe(
+                    tap(data => {
+                        statusText.textContent = 'Loaded ' + data.length + ' stocks at ' + new Date()
+                            .toLocaleTimeString('en-IN');
+                        showToast('✅ Data refreshed: ' + data.length + ' stocks');
+                    }),
+                    catchError(err => {
+                        statusText.textContent = 'Error: ' + err.message;
+                        showToast('❌ ' + err.message, true);
+                        return EMPTY;
+                    })
+                ))
+            ).subscribe(data => {
+                currentData$.next(data);
+            });
+
+            selectedSnapshotId$.pipe(
+                switchMap(id => {
+                    if (!id) return of([]);
+                    return loadAllSnapshots().pipe(
+                        map(snapshots => {
+                            const snap = snapshots.find(s => String(s.id) === id);
+                            return snap ? snap.stocks : [];
+                        })
+                    );
+                })
+            ).subscribe(prev => {
+                previousData$.next(prev);
+            });
+
+            // ==================== Snapshot Save Pipeline ====================
+            saveTrigger$.pipe(
+                withLatestFrom(currentData$),
+                filter(([_, data]) => !isEmpty(data)),
+                switchMap(([_, data]) => saveSnapshot(data).pipe(
+                    tap(() => showToast('💾 Snapshot saved to IndexedDB')),
+                    catchError(err => {
+                        showToast('❌ Save failed: ' + err.message, true);
+                        return EMPTY;
+                    })
+                ))
+            ).subscribe(() => {
+                refreshSnapshotSelect();
+            });
+
+            saveTrigger$.pipe(
+                withLatestFrom(currentData$),
+                filter(([_, data]) => isEmpty(data))
+            ).subscribe(() => {
+                showToast('❌ No data to save. Fetch first.', true);
+            });
+
+            // ==================== Clear Pipeline ====================
+            clearTrigger$.pipe(
+                switchMap(() => {
+                    if (!confirm('Delete all snapshots from IndexedDB?')) return EMPTY;
+                    return clearAllSnapshots().pipe(
+                        tap(() => {
+                            previousData$.next([]);
+                            selectedSnapshotId$.next('');
+                            compareSelect.value = '';
+                            showToast('🗑 All snapshots cleared');
+                        }),
+                        catchError(err => {
+                            showToast('❌ Clear failed: ' + err.message, true);
+                            return EMPTY;
+                        })
+                    );
+                })
+            ).subscribe(() => {
+                refreshSnapshotSelect();
+            });
+
+            // ==================== Snapshot Select Population ====================
+            function refreshSnapshotSelect() {
+                loadAllSnapshots().pipe(take(1)).subscribe(snapshots => {
+                    const currentVal = compareSelect.value;
+                    const html = chain(snapshots)
+                        .orderBy(['timestamp'], ['desc'])
+                        .reduce((acc, s) => {
+                            const selected = String(s.id) === currentVal ? ' selected' : '';
+                            return acc + '<option value="' + s.id + '"' + selected + '>' +
+                                escape(s.label) + ' (' + s.stocks.length + ' stocks)</option>';
+                        }, '<option value="">-- Select snapshot --</option>')
+                        .value();
+                    compareSelect.innerHTML = html;
+                    snapshotCount.textContent = 'Snapshots: ' + snapshots.length;
+                });
+            }
+
+            // ==================== Industry Chart ====================
+            let industryChart = null;
+
+            function renderIndustryChart(stocks) {
+                // Use Lodash _.groupBy and _.mapValues
+                const groups = groupBy(stocks, s => s.industry || 'Other');
+                const stats = chain(groups)
+                    .mapValues(arr => ({
+                        avg: round(arr.reduce((sum, s) => sum + (s.pChange || 0), 0) / arr.length, 2),
+                        count: arr.length
+                    }))
+                    .toPairs()
+                    .map(([industry, { avg, count }]) => ({
+                        label: industry + ' (' + count + ')',
+                        value: avg
+                    }))
+                    .orderBy(['value'], ['desc'])
+                    .value();
+
+                const sortedLabels = stats.map(s => s.label);
+                const sortedData = stats.map(s => s.value);
+
+                const ctx = chartCanvas.getContext('2d');
+                if (industryChart) industryChart.destroy();
+
+                industryChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedLabels,
+                        datasets: [{
+                            label: 'Avg % Change',
+                            data: sortedData,
+                            backgroundColor: sortedData.map(v => v >= 0 ? 'rgba(0,212,106,0.8)' :
+                                'rgba(255,59,85,0.8)'),
+                            borderColor: sortedData.map(v => v >= 0 ? '#00d46a' : '#ff3b55'),
+                            borderWidth: 1,
+                            borderRadius: 5,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: c => ' Avg: ' + (c.raw >= 0 ? '+' : '') + c.raw + '%'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(36,43,56,0.5)' },
+                                ticks: { color: '#8893a7', callback: v => v + '%' }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: { color: '#8893a7', font: { weight: 'bold', size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }
+
+            currentData$.subscribe(data => {
+                if (!isEmpty(data)) renderIndustryChart(data);
+            });
+
+            // ==================== Exports ====================
+            function getExportData() {
+                let result = null;
+                sortedData$.pipe(take(1)).subscribe(d => result = d);
+                return result;
+            }
+
+            function downloadCSV() {
+                const data = getExportData();
+                if (isEmpty(data)) { showToast('❌ No data to export', true); return; }
+                const fields = ['symbol', 'lastPrice', 'open', 'change', 'pChange', 'previousClose', 'dayHigh', 'dayLow',
+                    'totalTradedVolume', 'totalTradedValue', 'yearHigh', 'yearLow', 'comparePrice', 'comparePChange',
+                    'trend'
+                ];
+                const csv = chain(data)
+                    .thru(arr => [fields.join(',')].concat(arr.map(r =>
+                        fields.map(h => {
+                            const v = r[h];
+                            return typeof v === 'string' && v.includes(',') ? '"' + v + '"' : v;
+                        }).join(',')
+                    )))
+                    .value()
+                    .join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nse_data_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('📥 CSV exported');
+            }
+
+            function downloadJSON() {
+                const data = getExportData();
+                if (isEmpty(data)) { showToast('❌ No data to export', true); return; }
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nse_data_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('📥 JSON exported');
+            }
+
+            // ==================== Toast ====================
+            function showToast(msg, isError) {
+                const t = document.createElement('div');
+                t.className = 'toast';
+                t.style.borderLeft = '3px solid ' + (isError ? 'var(--red)' : 'var(--green)');
+                t.textContent = msg;
+                toastContainer.appendChild(t);
+                setTimeout(() => {
+                    t.style.opacity = '0';
+                    setTimeout(() => t.remove(), 300);
+                }, 3000);
+            }
+
+            // ==================== Auto Snapshot Logic ====================
+            const autoSnapshot$ = interval(60000).pipe(
+                withLatestFrom(currentData$),
+                filter(([_, data]) => {
+                    const now = new Date();
+                    return now.getMinutes() % 5 === 0 && !isEmpty(data);
+                }),
+                switchMap(([_, data]) => {
+                    return loadAllSnapshots().pipe(
+                        map(snapshots => {
+                            const last5Min = Date.now() - 4 * 60 * 1000;
+                            const recent = snapshots.filter(s => s.timestamp > last5Min);
+                            if (isEmpty(recent)) {
+                                showToast('⏰ Auto snapshot saved at ' + new Date()
+                                    .toLocaleTimeString('en-IN'));
+                                return data;
+                            }
+                            return null;
+                        }),
+                        filter(d => d !== null)
+                    );
+                }),
+                switchMap(data => saveSnapshot(data).pipe(
+                    catchError(() => EMPTY)
+                ))
+            );
+
+            // ==================== DOM Events with RxJS ====================
+
+            fromEvent($('refreshBtn'), 'click').subscribe(() => fetchTrigger$.next());
+            fromEvent($('saveBtn'), 'click').subscribe(() => saveTrigger$.next());
+            fromEvent($('clearBtn'), 'click').subscribe(() => clearTrigger$.next());
+
+            fromEvent(compareSelect, 'change').pipe(
+                map(e => e.target.value),
+                distinctUntilChanged()
+            ).subscribe(id => selectedSnapshotId$.next(id));
+
+            fromEvent($('csvBtn'), 'click').subscribe(() => downloadCSV());
+            fromEvent($('jsonBtn'), 'click').subscribe(() => downloadJSON());
+
+            fromEvent($('chartHeader'), 'click').subscribe(() => {
+                const card = $('industryChartCard');
+                const btn = $('chartToggleBtn');
+                card.classList.toggle('collapsed');
+                btn.textContent = card.classList.contains('collapsed') ? '+' : '−';
+            });
+
+            fromEvent(document.querySelectorAll('th[data-sort]'), 'click').pipe(
+                map(event => event.currentTarget.getAttribute('data-sort')),
+                distinctUntilChanged()
+            ).subscribe(col => {
+                const currentSortCol = sortCol$.getValue();
+                const currentSortDir = sortDir$.getValue();
+                const newDir = (currentSortCol === col && currentSortDir === 'asc') ? 'desc' : 'asc';
+                sortCol$.next(col);
+                sortDir$.next(newDir);
+                document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+                const arrow = newDir === 'asc' ? '▲' : '▼';
+                const el = document.getElementById('sort-' + col);
+                if (el) el.textContent = arrow;
+            });
+
+            // ==================== Column Filter Events ====================
+            function buildColumnFilters() {
+                const cols = [
+                    { key: 'symbol', label: 'Symbol', type: 'text' },
+                    { key: 'lastPrice', label: 'Min Price', type: 'number' },
+                    { key: 'maxPrice', label: 'Max Price', type: 'number' },
+                    { key: 'minChange', label: 'Min Chg', type: 'number' },
+                    { key: 'maxChange', label: 'Max Chg', type: 'number' },
+                    { key: 'minPChange', label: 'Min Chg%', type: 'number' },
+                    { key: 'maxPChange', label: 'Max Chg%', type: 'number' },
+                    {
+                        key: 'trend', label: 'Trend', type: 'select',
+                        options: [
+                            ['', 'All'],
+                            ['up', 'Up'],
+                            ['down', 'Down'],
+                            ['same', 'Same']
+                        ]
+                    },
+                ];
+                const container = $('columnFilters');
+                const filterSubjects = {};
+
+                cols.forEach(c => {
+                    let el;
+                    if (c.type === 'select') {
+                        el = document.createElement('select');
+                        el.style.minWidth = '90px';
+                        c.options.forEach(o => {
+                            const opt = document.createElement('option');
+                            opt.value = o[0];
+                            opt.textContent = o[1];
+                            el.appendChild(opt);
+                        });
+                    } else {
+                        el = document.createElement('input');
+                        el.type = c.type === 'number' ? 'number' : 'text';
+                        el.placeholder = c.label;
+                    }
+                    container.appendChild(el);
+
+                    const event$ = fromEvent(el, 'input').pipe(
+                        map(e => e.target.value),
+                        debounceTime(300),
+                        distinctUntilChanged()
+                    );
+                    filterSubjects[c.key] = { el, event$ };
+                });
+
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'btn';
+                clearBtn.textContent = 'Clear';
+                clearBtn.style.cssText = 'font-size:11px;padding:4px 10px;';
+                container.appendChild(clearBtn);
+
+                fromEvent(clearBtn, 'click').subscribe(() => {
+                    Object.values(filterSubjects).forEach(fs => fs.el.value = '');
+                    colFilters$.next({});
+                });
+
+                const filterKeys = Object.keys(filterSubjects);
+                const filterObservables = filterKeys.map(k =>
+                    filterSubjects[k].event$.pipe(
+                        map(value => ({ key: k, value }))
+                    )
+                );
+
+                merge(...filterObservables).pipe(
+                    startWith(null),
+                    map(() => {
+                        const filters = {};
+                        filterKeys.forEach(k => {
+                            const v = filterSubjects[k].el.value;
+                            if (!isEmpty(v)) filters[k] = v;
+                        });
+                        return filters;
+                    }),
+                    distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b))
+                ).subscribe(filters => {
+                    colFilters$.next(filters);
+                });
+            }
+
+            // ==================== Auto Polling ====================
+            const autoFetch$ = merge(
+                of(null),
+                interval(60000)
+            ).pipe(
+                switchMap(() => fetchStocks().pipe(
+                    tap(data => {
+                        statusText.textContent = 'Loaded ' + data.length + ' stocks at ' + new Date()
+                            .toLocaleTimeString('en-IN');
+                    }),
+                    catchError(err => {
+                        statusText.textContent = 'Error: ' + err.message;
+                        return EMPTY;
+                    })
+                ))
+            );
+
+            // ==================== Init ====================
+            document.addEventListener('DOMContentLoaded', function () {
+                buildColumnFilters();
+
+                db$.subscribe(() => {
+                    refreshSnapshotSelect();
+                });
+
+                autoFetch$.subscribe(data => {
+                    currentData$.next(data);
+                });
+
+                autoSnapshot$.subscribe();
+            });
+
+        })();
+    </script>
+</body>
+
+</html>
